@@ -180,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tableLoading.textContent = `Loading data from ${startDateUS} to ${endDateUS}...`;
     }
     try {
-      const response = await fetch("http://localhost:3000/api/get-data-for-range", {
+      const response = await fetch("https://iasr-s3-2.onrender.com/api/get-data-for-range", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startDate: startISO, endDate: endISO }),
@@ -534,7 +534,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ];
 
       try {
-        await fetch("http://localhost:3000/api/approve", {
+        await fetch("https://iasr-s3-2.onrender.com/api/approve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ headers, data }),
@@ -610,3 +610,4 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
