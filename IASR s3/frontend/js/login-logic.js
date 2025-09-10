@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loginButton.textContent = "Loading Data...";
   }
 
-  fetch("http://localhost:3000/api/get-all-markets")
+  fetch("https://iasr-s3-2.onrender.com/api/get-all-markets")
     .then(res => res.json())
     .then(result => {
       const markets = result.data || [];
