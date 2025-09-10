@@ -6,7 +6,7 @@ self.onmessage = function (event) {
 
   if (useDb) {
     // fetch from backend API for date range
-    fetch("http://localhost:3000/api/get-data-for-range", {
+    fetch("https://iasr-s3-2.onrender.com/api/get-data-for-range", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ startDate, endDate }),
