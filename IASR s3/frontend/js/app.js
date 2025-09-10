@@ -154,7 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function fetchDataForRange() {
     tableLoading.textContent = `Loading data from ${startDateUS} to ${endDateUS}...`;
     try {
-      const response = await fetch("http://localhost:3000/api/get-data-for-range", {
+      const response = await fetch("https://iasr-s3-2.onrender.com/api/get-data-for-range", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startDate: startISO, endDate: endISO }),
