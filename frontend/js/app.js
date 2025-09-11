@@ -1,7 +1,7 @@
 // app.js — static site, centralized API base and correct endpoints
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Centralized API base; index.html should set window.CONFIG.API_BASE = "https://iasr-s3-2.onrender.com"
+  // Base API URL from global config (set in index.html). Fallback is the deployed backend.
   const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
 
   // --- 1. Security & Session Data ---
@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function fetchDataForRange() {
     tableLoading.textContent = `Loading data from ${startDateUS} to ${endDateUS}...`;
     try {
-      // FIX: use deployed backend and correct API route
+      // Use deployed backend and correct API route
       const response = await fetch(`${API_BASE}/api/get-data-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const errJson = await response.json();
           if (errJson?.message) msg = errJson.message;
-        } catch (_) { /* ignore parse error */ }
+        } catch (_) {}
         throw new Error(msg);
       }
       const result = await response.json();
@@ -188,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       fullData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
 
-      // --- Important login-based market filtering ---
+      // Login-based market filtering
       if (userRole !== "admin") {
         fullData = fullData.filter((row) => row.Marketid === userRole);
       }
@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tableLoading.style.display = "none";
     tableContainer.style.display = "block";
 
-    // Set market filter according to userRole (login-based market restriction)
+    // Set market filter according to userRole
     if (userRole !== "admin") {
       marketIdFilter.disabled = true;
       marketIdFilter.innerHTML = `<option value="${userRole}" selected>${userRole}</option>`;
