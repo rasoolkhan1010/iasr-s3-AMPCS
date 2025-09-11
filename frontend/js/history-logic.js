@@ -1,4 +1,4 @@
-// js/history-logic.js (Final Version with Excel Export)
+// js/history-logic.js (Final Version with Debug + Safety)
 document.addEventListener("DOMContentLoaded", () => {
   // --- DOM Elements ---
   const tableLoading = document.getElementById("table-loading");
@@ -13,31 +13,65 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Web Worker to load data ---
   const historyWorker = new Worker("js/csv-worker.js");
-  historyWorker.postMessage({ url: "frontend/approved_suggestion.csv" });
 
+  // You can optionally pass API_BASE or other config here
+  // historyWorker.postMessage({ type: "config", API_BASE: "https://..." });
+
+  // Send request to load CSV
+  historyWorker.postMessage({
+    url: "frontend/approved_suggestion.csv", // adjust path if needed
+    userRole: "admin", // or some role like "RGV"
+    useDb: false // set to true if switching to API
+  });
+
+  // --- Handle worker response ---
   historyWorker.onmessage = function (event) {
-    tableLoading.style.display = "none";
-    tableContainer.style.display = "block";
+    const { data, headers, error, debug, message, firstRow } = event.data;
 
-    if (event.data.error) {
-      tableBody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500">Error loading history: ${event.data.error}</td></tr>`;
+    // Show debug logs in dev console
+    if (debug) {
+      console.log("📦 DEBUG from worker:", message);
+      console.log("Headers:", headers);
+      console.log("First row of data:", firstRow);
       return;
     }
 
-    fullHistoryData = event.data.data;
-    historyHeaders = event.data.headers;
+    tableLoading.style.display = "none";
+    tableContainer.style.display = "block";
+
+    if (error) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="text-center py-8 text-red-500">
+            Error loading history: ${error}
+          </td>
+        </tr>`;
+      return;
+    }
+
+    // Validate headers
+    if (!Array.isArray(headers) || headers.length === 0) {
+      console.error("❌ Invalid or missing headers from worker:", headers);
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="text-center py-8 text-red-500">
+            Invalid header format in history data.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    fullHistoryData = data;
+    historyHeaders = headers;
     renderHistoryTable(fullHistoryData, historyHeaders);
   };
 
-  // Attach event listener for the export button
-  if (exportBtn) {
-    exportBtn.addEventListener("click", exportToExcel);
-  }
-
+  // --- Render the table ---
   function renderHistoryTable(data, headers) {
     tableHead.innerHTML = "";
     tableBody.innerHTML = "";
 
+    // Render headers
     headers.forEach((headerText) => {
       const th = document.createElement("th");
       th.className =
@@ -46,11 +80,18 @@ document.addEventListener("DOMContentLoaded", () => {
       tableHead.appendChild(th);
     });
 
-    if (data.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="${headers.length}" class="text-center py-8 text-gray-500">No approval history found.</td></tr>`;
+    // If no data
+    if (!Array.isArray(data) || data.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="${headers.length}" class="text-center py-8 text-gray-500">
+            No approval history found.
+          </td>
+        </tr>`;
       return;
     }
 
+    // Render rows
     data.forEach((row) => {
       const tr = document.createElement("tr");
       tr.className = "hover:bg-gray-50";
@@ -65,7 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Excel Export instead of CSV ---
+  // --- Excel Export ---
   function exportToExcel() {
     if (fullHistoryData.length === 0) {
       alert("There is no history data to export.");
@@ -73,7 +114,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Convert JSON array to worksheet
-    const ws = XLSX.utils.json_to_sheet(fullHistoryData, { header: historyHeaders });
+    const ws = XLSX.utils.json_to_sheet(fullHistoryData, {
+      header: historyHeaders,
+    });
 
     // Create a new workbook and append the worksheet
     const wb = XLSX.utils.book_new();
@@ -85,5 +128,9 @@ document.addEventListener("DOMContentLoaded", () => {
       `approval_history_${new Date().toISOString().split("T")[0]}.xlsx`
     );
   }
-});
 
+  // --- Export button listener ---
+  if (exportBtn) {
+    exportBtn.addEventListener("click", exportToExcel);
+  }
+});
