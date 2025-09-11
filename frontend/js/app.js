@@ -1,4 +1,9 @@
+// app.js — static site, centralized API base and correct endpoints
+
 document.addEventListener("DOMContentLoaded", () => {
+  // Centralized API base; index.html should set window.CONFIG.API_BASE = "https://iasr-s3-2.onrender.com"
+  const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
+
   // --- 1. Security & Session Data ---
   const userRole = sessionStorage.getItem("userRole");
   let sd = sessionStorage.getItem("startDate"); // may be US or ISO
@@ -154,12 +159,20 @@ document.addEventListener("DOMContentLoaded", () => {
   async function fetchDataForRange() {
     tableLoading.textContent = `Loading data from ${startDateUS} to ${endDateUS}...`;
     try {
-      const response = await fetch("http://localhost:3000/api/get-data-for-range", {
+      // FIX: use deployed backend and correct API route
+      const response = await fetch(`${API_BASE}/api/get-data-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startDate: startISO, endDate: endISO }),
       });
-      if (!response.ok) throw new Error((await response.json()).message || "Failed to fetch data");
+      if (!response.ok) {
+        let msg = "Failed to fetch data";
+        try {
+          const errJson = await response.json();
+          if (errJson?.message) msg = errJson.message;
+        } catch (_) { /* ignore parse error */ }
+        throw new Error(msg);
+      }
       const result = await response.json();
 
       headers = result.headers || [];
