@@ -48,6 +48,8 @@ self.onmessage = function (event) {
     complete: function (results) {
       const data = results.data;
       const headers = results.meta.fields || [];
+        console.log("🚀 Headers parsed by PapaParse:", headers); // <-- Add this
+  console.log("📦 First row of data:", data[0]);           // <-- And this
       let filtered = data;
       if (userRole && userRole !== "admin") {
         filtered = data.filter((r) => r.Marketid === userRole);
