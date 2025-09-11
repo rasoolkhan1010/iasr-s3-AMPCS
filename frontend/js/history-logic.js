@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Send request to load CSV from backend server
   historyWorker.postMessage({
-    url: "https://your-backend-url.onrender.com/approved_suggestion.csv", // <-- Replace with your backend URL
+    url: "https://iasr-s3-2.onrender.com/approved_suggestion.csv", // <-- Replace with your backend URL
     userRole: "admin", // or some role like "RGV"
     useDb: false // set to true if switching to API
   });
@@ -131,3 +131,4 @@ document.addEventListener("DOMContentLoaded", () => {
     exportBtn.addEventListener("click", exportToExcel);
   }
 });
+
