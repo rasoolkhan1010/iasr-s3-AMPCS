@@ -12,7 +12,6 @@ self.onmessage = function (event) {
 
   const { url, userRole, useDb, startDate, endDate } = event.data || {};
 
-  // --- DB mode ---
   if (useDb) {
     fetch(`${API_BASE}/api/get-data-for-range`, {
       method: "POST",
@@ -32,20 +31,15 @@ self.onmessage = function (event) {
       })
       .then((json) => {
         // json: { headers, data }
-        self.postMessage({
-          data: json.data || [],
-          headers: json.headers || [],
-        });
+        self.postMessage({ data: json.data || [], headers: json.headers || [] });
       })
       .catch((err) => {
-        self.postMessage({
-          error: err.message || "Failed to fetch from DB",
-        });
+        self.postMessage({ error: err.message || "Failed to fetch from DB" });
       });
     return;
   }
 
-  // --- CSV parsing mode ---
+  // CSV parsing path
   Papa.parse(url, {
     download: true,
     header: true,
@@ -53,35 +47,20 @@ self.onmessage = function (event) {
     skipEmptyLines: true,
     complete: function (results) {
       let headers = results.meta.fields || [];
-      let data = results.data;
 
-      // Trim header and object keys
-      headers = headers.map((h) => h.trim());
-      data = data.map((row) =>
-        Object.fromEntries(
-          Object.entries(row).map(([k, v]) => [k.trim(), v])
-        )
-      );
+      // Strip BOM from first header if present
+      if (headers.length && headers[0].charCodeAt(0) === 0xFEFF) {
+        headers[0] = headers[0].slice(1);
+      }
 
-      // Filter for non-admin roles
+      const data = results.data;
       let filtered = data;
+
       if (userRole && userRole !== "admin") {
         filtered = data.filter((r) => r.Marketid === userRole);
       }
 
-      // Send debug info
-      self.postMessage({
-        debug: true,
-        message: "Parsed CSV",
-        headers: headers,
-        firstRow: filtered[0] || {},
-      });
-
-      // Send actual data
-      self.postMessage({
-        data: filtered,
-        headers: headers,
-      });
+      self.postMessage({ data: filtered, headers: headers });
     },
     error: function (error) {
       self.postMessage({ error: error.message });
