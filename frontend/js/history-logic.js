@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Web Worker to load data ---
   const historyWorker = new Worker("js/csv-worker.js");
-  historyWorker.postMessage({ url: "approved_suggestion.csv" });
+  historyWorker.postMessage({ url: "frontend/approved_suggestion.csv" });
 
   historyWorker.onmessage = function (event) {
     tableLoading.style.display = "none";
@@ -86,3 +86,4 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 });
+
