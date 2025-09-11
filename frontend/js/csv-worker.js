@@ -12,6 +12,7 @@ self.onmessage = function (event) {
 
   const { url, userRole, useDb, startDate, endDate } = event.data || {};
 
+  // --- DB mode ---
   if (useDb) {
     fetch(`${API_BASE}/api/get-data-for-range`, {
       method: "POST",
@@ -31,30 +32,56 @@ self.onmessage = function (event) {
       })
       .then((json) => {
         // json: { headers, data }
-        self.postMessage({ data: json.data || [], headers: json.headers || [] });
+        self.postMessage({
+          data: json.data || [],
+          headers: json.headers || [],
+        });
       })
       .catch((err) => {
-        self.postMessage({ error: err.message || "Failed to fetch from DB" });
+        self.postMessage({
+          error: err.message || "Failed to fetch from DB",
+        });
       });
     return;
   }
 
-  // CSV parsing path
+  // --- CSV parsing mode ---
   Papa.parse(url, {
     download: true,
     header: true,
     dynamicTyping: true,
     skipEmptyLines: true,
     complete: function (results) {
-      const data = results.data;
-      const headers = results.meta.fields || [];
-        console.log("🚀 Headers parsed by PapaParse:", headers); // <-- Add this
-  console.log("📦 First row of data:", data[0]);           // <-- And this
+      let headers = results.meta.fields || [];
+      let data = results.data;
+
+      // Trim header and object keys
+      headers = headers.map((h) => h.trim());
+      data = data.map((row) =>
+        Object.fromEntries(
+          Object.entries(row).map(([k, v]) => [k.trim(), v])
+        )
+      );
+
+      // Filter for non-admin roles
       let filtered = data;
       if (userRole && userRole !== "admin") {
         filtered = data.filter((r) => r.Marketid === userRole);
       }
-      self.postMessage({ data: filtered, headers: headers });
+
+      // Send debug info
+      self.postMessage({
+        debug: true,
+        message: "Parsed CSV",
+        headers: headers,
+        firstRow: filtered[0] || {},
+      });
+
+      // Send actual data
+      self.postMessage({
+        data: filtered,
+        headers: headers,
+      });
     },
     error: function (error) {
       self.postMessage({ error: error.message });
