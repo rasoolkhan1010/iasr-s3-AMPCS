@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "recommended shipping": "Recommended Shipping"
   };
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
-  const keyOf = (r) => `${r.Marketid}||${r.custno}||${r.Itmdesc}`;
+  const keyOf = (r) => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
 
   // --- 4) Logout and export ---
   if (logoutBtn) {
@@ -612,4 +612,5 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
 
