@@ -110,7 +110,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
 });
 
 // Approve endpoint writes to CSV
-app.post("/api/approve", (req, res) => {
+app.post("FRONTEND_URL"/api/approve", (req, res) => {
   const { headers, data } = req.body;
   const csvFilePath = path.join(__dirname, "..", "frontend", "approved_suggestion.csv");
   const timestamp = new Date().toISOString();
