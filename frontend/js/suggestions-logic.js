@@ -74,14 +74,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Headers and mappings
   const desiredHeaders = [
-    "Select", "Market-id", "Cutno", "Itmdesc", "Cost",
+    "Select", "Market-id", "company", "Itmdesc", "Cost",
     "Total_stock", "month sale", "week sale",
     "recommended qty", "required qty", "Total Cost",
     "recommended shipping", "Action"
   ];
   const columnMapping = {
     "Market-id": "Marketid",
-    Cutno: "custno",
+    company: "company",
     Itmdesc: "Itmdesc",
     Cost: "cost",
     Total_stock: "Total _Stock",
@@ -612,3 +612,4 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
