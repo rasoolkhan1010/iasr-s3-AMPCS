@@ -5,6 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // Single source of truth for backend URL (set in index.html)
+  const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
+
   const usernameInput = document.getElementById("username");
   const passwordInput = document.getElementById("password");
   const marketSelect = document.getElementById("market-select");
@@ -73,10 +76,16 @@ document.addEventListener("DOMContentLoaded", () => {
     loginButton.textContent = "Loading Data...";
   }
 
-  fetch("http://localhost:3000/api/get-all-markets")
-    .then(res => res.json())
+  // FIX: load markets from correct backend route (no localhost, no domain root)
+  fetch(`${API_BASE}/api/get-all-markets`)
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
     .then(result => {
       const markets = result.data || [];
+
+      // Mock/simple user DB for demo: admin + per-market user
       const db = { admin: { password: "admin", allowedRole: "admin" } };
       markets.forEach(market => {
         const uname = `${String(market).toLowerCase()}_user`;
@@ -84,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       userDatabase = db;
 
-      // Market dropdown (placeholder+Admin first)
+      // Market dropdown (placeholder+Admin first; append markets)
       const fragment = document.createDocumentFragment();
       markets.forEach(market => {
         const option = document.createElement("option");
@@ -188,6 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem("startDateISO", startISO);
     sessionStorage.setItem("endDateISO", endISO);
 
+    // Redirect to dashboard page that uses /api/get-data-for-range
     window.location.href = "dashboard.html";
   });
 });
