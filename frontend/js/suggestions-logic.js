@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // 0) Centralized backend base URL (set window.CONFIG.API_BASE in index.html)
+  const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
+
   // --- 1) Security / session ---
   const userRole = sessionStorage.getItem("userRole");
   let sd = sessionStorage.getItem("startDate");
@@ -180,7 +183,8 @@ document.addEventListener("DOMContentLoaded", () => {
       tableLoading.textContent = `Loading data from ${startDateUS} to ${endDateUS}...`;
     }
     try {
-      const response = await fetch("http://localhost:3000/api/get-data-for-range", {
+      // FIX: correct backend route and HTTPS (no localhost)
+      const response = await fetch(`${API_BASE}/api/get-data-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startDate: startISO, endDate: endISO }),
@@ -207,7 +211,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       fullData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
 
-      // --- Important login-based market filtering ---
       if (userRole !== "admin") {
         fullData = fullData.filter(row => row.Marketid === userRole);
       }
@@ -534,7 +537,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ];
 
       try {
-        await fetch("http://localhost:3000/api/approve", {
+        // FIX: correct backend route and HTTPS (no localhost)
+        await fetch(`${API_BASE}/api/approve`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ headers, data }),
@@ -566,8 +570,6 @@ document.addEventListener("DOMContentLoaded", () => {
           )}, total ${rowCount} rows and ${colCount} columns`
         : "No data to display";
   }
-
-
 
   // --- 12) Export (all filtered rows) ---
   function exportToExcel() {
