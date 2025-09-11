@@ -14,12 +14,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Web Worker to load data ---
   const historyWorker = new Worker("js/csv-worker.js");
 
-  // You can optionally pass API_BASE or other config here
-  // historyWorker.postMessage({ type: "config", API_BASE: "https://..." });
-
-  // Send request to load CSV
+  // Send request to load CSV from backend server
   historyWorker.postMessage({
-    url: "../approved_suggestion.csv", // adjust path if needed
+    url: "https://your-backend-url.onrender.com/approved_suggestion.csv", // <-- Replace with your backend URL
     userRole: "admin", // or some role like "RGV"
     useDb: false // set to true if switching to API
   });
@@ -134,4 +131,3 @@ document.addEventListener("DOMContentLoaded", () => {
     exportBtn.addEventListener("click", exportToExcel);
   }
 });
-
