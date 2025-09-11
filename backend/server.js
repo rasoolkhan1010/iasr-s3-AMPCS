@@ -109,10 +109,10 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
 });
 
-// Approve endpoint writes to CSV in backend/data/
+// Approve endpoint writes to CSV in backend folder directly
 app.post("/api/approve", (req, res) => {
   const { headers, data } = req.body;
-  const csvFilePath = path.join(__dirname, "data", "approved_suggestion.csv");
+  const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
   const timestamp = new Date().toISOString();
   const headersWithTimestamp = ["Timestamp", ...headers];
   const dataWithTimestamp = [timestamp, ...data];
@@ -131,7 +131,7 @@ app.post("/api/approve", (req, res) => {
 
 // Serve the CSV file for frontend to fetch and display
 app.get("/approved_suggestion.csv", (req, res) => {
-  const csvFilePath = path.join(__dirname, "data", "approved_suggestion.csv");
+  const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
   res.sendFile(csvFilePath, (err) => {
     if (err) {
       res.status(404).send("File not found");
