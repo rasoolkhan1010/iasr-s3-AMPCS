@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Send request to load CSV
   historyWorker.postMessage({
-    url: "frontend/approved_suggestion.csv", // adjust path if needed
+    url: "../approved_suggestion.csv", // adjust path if needed
     userRole: "admin", // or some role like "RGV"
     useDb: false // set to true if switching to API
   });
@@ -134,3 +134,4 @@ document.addEventListener("DOMContentLoaded", () => {
     exportBtn.addEventListener("click", exportToExcel);
   }
 });
+
