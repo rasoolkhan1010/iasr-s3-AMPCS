@@ -1,0 +1,4 @@
+Timestamp,Marketid,custno,Itmdesc,cost,Total_Stock,Recommended_Quntitty,Needed_Quntitty,Total_cost,Recommended_Shipping,Approved_By
+
+
+"2025-09-10T22:03:00.708Z","RGV","AMTX1400","ANS HPPL62A TABASCO 8G BLK KIT","68.9","0","0","0","0.00","No order needed","John Doe"
