@@ -512,7 +512,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const headers = [
         "Marketid",
-        "custno",
+        "company",
         "Itmdesc",
         "cost",
         "Total_Stock",
@@ -525,7 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const data = [
         item.Marketid,
-        item.custno,
+        item.company,
         item.Itmdesc,
         itemCost,
         item["Total _Stock"] || 0,
@@ -612,5 +612,6 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
 
 
