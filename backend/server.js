@@ -56,7 +56,7 @@ const CSV_HEADERS = [
 app.get("/health", async (req, res) => {
   try {
     const now = await pool.query("SELECT NOW()");
-    res.json({ ok: true, db_time: now.rows.now });
+    res.json({ ok: true, db_time: now.rows[0].now });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -109,19 +109,33 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
 });
 
-// Approve endpoint writes to CSV
-app.post("FRONTEND_URL"/api/approve", (req, res) => {
+// Approve endpoint writes to CSV in backend/data/
+app.post("/api/approve", (req, res) => {
   const { headers, data } = req.body;
-  const csvFilePath = path.join(__dirname, "..", "frontend", "approved_suggestion.csv");
+  const csvFilePath = path.join(__dirname, "data", "approved_suggestion.csv");
   const timestamp = new Date().toISOString();
   const headersWithTimestamp = ["Timestamp", ...headers];
   const dataWithTimestamp = [timestamp, ...data];
   const fileExists = fs.existsSync(csvFilePath);
   const csvRow = dataWithTimestamp.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",");
   const contentToAppend = (fileExists ? "\n" : headersWithTimestamp.join(",") + "\n") + csvRow;
+
   fs.appendFile(csvFilePath, contentToAppend, "utf8", (err) => {
-    if (err) return res.status(500).json({ message: "Failed to save approval." });
+    if (err) {
+      console.error("Failed to save approval:", err);
+      return res.status(500).json({ message: "Failed to save approval." });
+    }
     res.status(200).json({ message: "Approval saved successfully!" });
+  });
+});
+
+// Serve the CSV file for frontend to fetch and display
+app.get("/approved_suggestion.csv", (req, res) => {
+  const csvFilePath = path.join(__dirname, "data", "approved_suggestion.csv");
+  res.sendFile(csvFilePath, (err) => {
+    if (err) {
+      res.status(404).send("File not found");
+    }
   });
 });
 
