@@ -149,7 +149,7 @@ app.get("/api/get-all-markets", async (req, res) => {
 // New: Add approved data to history_data table
 app.post("/api/add-history", async (req, res) => {
   const {
-    Marketid, company, Itmdesc, cost, Total_Stock,
+    marketid, company, Itmdesc, cost, Total_Stock,
     Original_Recommended_Qty, Order_Qty, Total_Cost,
     Recommended_Shipping, Approved_By
   } = req.body;
