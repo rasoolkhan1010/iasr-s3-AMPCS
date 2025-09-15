@@ -1,4 +1,3 @@
-// server.js — Render-ready (Express + Postgres, strict CORS, health)
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
@@ -6,12 +5,10 @@ const fs = require("fs");
 const path = require("path");
 
 const app = express();
-
 const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://iasr-s3-3-front-end.onrender.com";
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://admin:ZSYVyCmQynPYV8NJWBCLVea3YxkW630y@dpg-d3182cbuibrs73aajh5g-a/inventory_db_4al1";
+const DATABASE_URL = process.env.DATABASE_URL ||"postgresql://admin:ZSYVyCmQynPYV8NJWBCLVea3YxkW630y@dpg-d3182cbuibrs73aajh5g-a/inventory_db_4al1";
 
-// CORS: allow only your static site
 app.use(cors({
   origin: FRONTEND_URL,
   methods: ["GET", "POST", "OPTIONS"],
@@ -20,7 +17,6 @@ app.use(cors({
 
 app.use(express.json());
 
-// Postgres via DATABASE_URL (SSL typical on Render)
 const pool = new Pool(
   DATABASE_URL
     ? {
@@ -36,7 +32,6 @@ const pool = new Pool(
       }
 );
 
-// Helper: MM/DD/YYYY
 function formatDateMMDDYYYY(d) {
   if (!d) return "";
   const dt = new Date(d);
@@ -52,7 +47,7 @@ const CSV_HEADERS = [
   "To_Order_Cost_2DAY","GROUND","To_Order_Cost_GROUND","Recommended Quntitty","Recommended Shipping"
 ];
 
-// Health: pings DB for readiness
+// Health check
 app.get("/health", async (req, res) => {
   try {
     const now = await pool.query("SELECT NOW()");
@@ -62,7 +57,7 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// Data range endpoint
+// Data range endpoint for inventory_data
 app.post("/api/get-data-for-range", async (req, res) => {
   const { startDate, endDate } = req.body;
   if (!startDate || !endDate) {
@@ -109,7 +104,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
 });
 
-// Approve endpoint writes to CSV in backend folder directly
+// Existing approve endpoint writing to CSV (keep intact)
 app.post("/api/approve", (req, res) => {
   const { headers, data } = req.body;
   const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
@@ -119,7 +114,6 @@ app.post("/api/approve", (req, res) => {
   const fileExists = fs.existsSync(csvFilePath);
   const csvRow = dataWithTimestamp.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",");
   const contentToAppend = (fileExists ? "\n" : headersWithTimestamp.join(",") + "\n") + csvRow;
-
   fs.appendFile(csvFilePath, contentToAppend, "utf8", (err) => {
     if (err) {
       console.error("Failed to save approval:", err);
@@ -129,7 +123,7 @@ app.post("/api/approve", (req, res) => {
   });
 });
 
-// Serve the CSV file for frontend to fetch and display
+// Serve CSV file (keep intact)
 app.get("/approved_suggestion.csv", (req, res) => {
   const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
   res.sendFile(csvFilePath, (err) => {
@@ -139,7 +133,7 @@ app.get("/approved_suggestion.csv", (req, res) => {
   });
 });
 
-// Markets
+// Markets endpoint (keep intact)
 app.get("/api/get-all-markets", async (req, res) => {
   try {
     const q = `SELECT DISTINCT marketid FROM public.inventory_data WHERE marketid IS NOT NULL ORDER BY marketid ASC`;
@@ -152,9 +146,72 @@ app.get("/api/get-all-markets", async (req, res) => {
   }
 });
 
-// Root
+// New: Add approved data to history_data table
+app.post("/api/add-history", async (req, res) => {
+  const {
+    Marketid, company, Itmdesc, cost, Total_Stock,
+    Original_Recommended_Qty, Order_Qty, Total_Cost,
+    Recommended_Shipping, Approved_By
+  } = req.body;
+
+  const Approved_At = new Date().toISOString();
+
+  try {
+    const sql = `
+    INSERT INTO history_data (
+      Marketid, company, Itmdesc, cost, "Total _Stock",
+      "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
+      "Recommended_Shipping", "Approved_By", Approved_At
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    `;
+
+    await pool.query(sql, [
+      Marketid, company, Itmdesc, cost, Total_Stock,
+      Original_Recommended_Qty, Order_Qty, Total_Cost,
+      Recommended_Shipping, Approved_By, Approved_At
+    ]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Add history error:", err);
+    res.status(500).json({ message: "Failed to save history record.", error: err.message });
+  }
+});
+
+// New: Get history data filtered by date range and optional filters
+app.post("/api/get-history-for-range", async (req, res) => {
+  const { startDate, endDate, marketId, custno, Itmdesc } = req.body;
+  let sql = `SELECT * FROM history_data WHERE Approved_At BETWEEN $1 AND $2`;
+  const params = [startDate, endDate];
+  let idx = 3;
+
+  if (marketId) {
+    sql += ` AND Marketid = $${idx++}`;
+    params.push(marketId);
+  }
+  if (custno) {
+    sql += ` AND custno = $${idx++}`;
+    params.push(custno);
+  }
+  if (Itmdesc) {
+    sql += ` AND Itmdesc = $${idx++}`;
+    params.push(Itmdesc);
+  }
+  sql += ` ORDER BY Approved_At DESC`;
+
+  try {
+    const result = await pool.query(sql, params);
+    res.json({ data: result.rows });
+  } catch (err) {
+    console.error("Get history error:", err);
+    res.status(500).json({ message: "Failed to fetch history data.", error: err.message });
+  }
+});
+
+// Root route
 app.get("/", (req, res) => res.send("OK - server up"));
 
+// Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
