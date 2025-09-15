@@ -6,6 +6,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const tableBody = document.querySelector("#history-table tbody");
   const exportBtn = document.getElementById("export-btn");
   const dataCountElement = document.getElementById("data-count");
+  const filterStartDateInput = document.getElementById("filter-start-date");
+  const filterEndDateInput = document.getElementById("filter-end-date");
+  const applyFilterBtn = document.getElementById("apply-filter-btn");
 
   // --- State ---
   let fullHistoryData = [];
@@ -13,12 +16,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentPage = 1;
   const rowsPerPage = 1000;
 
-  // Use session-stored dates or fallback values
-  const startDate = sessionStorage.getItem("startDateISO") || "2025-01-01";
-  const endDate = sessionStorage.getItem("endDateISO") || new Date().toISOString();
+  // Initialize filters from sessionStorage or defaults
+  function initFilters() {
+    const start = sessionStorage.getItem("startDateISO") || "2025-01-01";
+    const end = sessionStorage.getItem("endDateISO") || new Date().toISOString().slice(0, 10);
+    filterStartDateInput.value = start;
+    filterEndDateInput.value = end;
+    return { startDate: start, endDate: end };
+  }
 
-  // --- Fetch history data from backend ---
-  async function fetchHistoryData() {
+  // --- Fetch history data with filter ---
+  async function fetchHistoryData(startDate, endDate) {
     if (tableLoading) {
       tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
       tableLoading.style.display = "";
@@ -33,6 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const json = await response.json();
       fullHistoryData = json.data || [];
       currentFilteredData = fullHistoryData;
+      currentPage = 1;
       renderTableHeaders();
       updateTableByPage();
       if (tableLoading) tableLoading.style.display = "none";
@@ -46,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- Table headers and corresponding data keys ---
+  // --- Table headers and data keys ---
   const headers = [
     "Marketid", "Company", "Itmdesc", "Cost", "Total Stock",
     "Original Recommended Qty", "Order Qty", "Total Cost",
@@ -70,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Render table body rows ---
+  // --- Render table body ---
   function renderTableBody(data) {
     if (!tableBody) return;
     tableBody.innerHTML = "";
@@ -96,7 +105,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let val = row[key];
         if (key === "approved_at" && val) {
-          // Format timestamp for better readability
           val = new Date(val).toLocaleString();
         }
         td.textContent = val !== null && val !== undefined ? val : "";
@@ -107,50 +115,40 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Create pagination container if missing ---
+  // --- Pagination helpers ---
   function createPaginationContainer() {
     const container = document.createElement("div");
     container.className = "pagination-container";
     container.style.marginTop = "10px";
     container.style.textAlign = "center";
     container.style.paddingBottom = "50px";
-
     if (tableContainer) {
       tableContainer.parentNode.insertBefore(container, tableContainer.nextSibling);
     }
     return container;
   }
 
-  // --- Render pagination controls ---
   function renderPaginationControls() {
     const container = document.querySelector(".pagination-container") || createPaginationContainer();
     container.innerHTML = "";
-
     const totalPages = Math.ceil(currentFilteredData.length / rowsPerPage);
-    if (totalPages <= 1) {
-      return;
-    }
+    if (totalPages <= 1) return;
 
     function createPageButton(text, disabled, isCurrent = false) {
       const btn = document.createElement("button");
       btn.textContent = text;
       btn.disabled = disabled;
-      btn.className =
-        "mx-1 px-3 py-1 rounded border text-sm font-semibold " +
-        (disabled
-          ? "bg-gray-200 text-gray-400 cursor-not-allowed border-gray-300"
-          : "bg-white text-gray-700 hover:bg-blue-600 hover:text-white border-gray-300");
+      btn.className = isCurrent
+        ? "mx-1 px-3 py-1 rounded border text-sm font-bold bg-blue-600 text-white border-blue-700 shadow"
+        : "mx-1 px-3 py-1 rounded border text-sm font-semibold bg-white text-gray-700 hover:bg-blue-600 hover:text-white border-gray-300";
 
-      if (isCurrent) {
-        btn.className =
-          "mx-1 px-3 py-1 rounded border text-sm font-bold bg-blue-600 text-white border-blue-700 shadow";
-        btn.disabled = true;
+      if (disabled) {
+        btn.className = "mx-1 px-3 py-1 rounded border text-sm font-semibold bg-gray-200 text-gray-400 cursor-not-allowed border-gray-300";
       }
-
       return btn;
     }
 
-    // Previous button
+    // Previous
     const prevBtn = createPageButton("Previous", currentPage === 1);
     prevBtn.addEventListener("click", () => {
       if (currentPage > 1) {
@@ -160,24 +158,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     container.appendChild(prevBtn);
 
-    // Page number buttons (show max 10)
+    // Page Numbers
     let startPage = Math.max(1, currentPage - 4);
     let endPage = Math.min(totalPages, startPage + 9);
-    if (endPage - startPage < 9) {
-      startPage = Math.max(1, endPage - 9);
-    }
+    if (endPage - startPage < 9) startPage = Math.max(1, endPage - 9);
+
     for (let i = startPage; i <= endPage; i++) {
-      const btn = createPageButton(i, false, i === currentPage);
+      const pageBtn = createPageButton(i, false, i === currentPage);
       if (i !== currentPage) {
-        btn.addEventListener("click", () => {
+        pageBtn.addEventListener("click", () => {
           currentPage = i;
           updateTableByPage();
         });
       }
-      container.appendChild(btn);
+      container.appendChild(pageBtn);
     }
 
-    // Next button
+    // Next
     const nextBtn = createPageButton("Next", currentPage === totalPages);
     nextBtn.addEventListener("click", () => {
       if (currentPage < totalPages) {
@@ -188,7 +185,6 @@ document.addEventListener("DOMContentLoaded", () => {
     container.appendChild(nextBtn);
   }
 
-  // --- Update displayed table data according to current page ---
   function updateTableByPage() {
     const startIdx = (currentPage - 1) * rowsPerPage;
     const endIdx = currentPage * rowsPerPage;
@@ -197,21 +193,61 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDataCount();
   }
 
-  // --- Update data count display ---
   function updateDataCount() {
     if (!dataCountElement) return;
     const rowCount = currentFilteredData.length;
     const colCount = headers.length;
-    dataCountElement.textContent =
-      rowCount > 0
-        ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(
-            rowCount / rowsPerPage
-          )}, total ${rowCount} rows and ${colCount} columns`
-        : "No data to display";
+    dataCountElement.textContent = rowCount > 0
+      ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(rowCount / rowsPerPage)}, total ${rowCount} rows and ${colCount} columns`
+      : "No data to display";
   }
 
-  // --- Initial data fetch ---
-  fetchHistoryData();
+  // --- Export to Excel ---
+  function exportToExcel() {
+    if (!currentFilteredData.length) {
+      alert("No data to export.");
+      return;
+    }
+    const worksheetData = currentFilteredData.map(item => {
+      const obj = {};
+      headers.forEach((header, i) => {
+        obj[header] = item[dataKeys[i]] || "";
+      });
+      return obj;
+    });
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "History");
+    XLSX.writeFile(workbook, "Approval_History.xlsx");
+  }
 
-  // Optional: export to Excel functionality can be added here if needed
+  // --- Initialize filters and fetch data ---
+  const filters = initFilters();
+  fetchHistoryData(filters.startDate, filters.endDate);
+
+  // --- Event listeners ---
+  applyFilterBtn.addEventListener("click", () => {
+    const startDate = filterStartDateInput.value;
+    const endDate = filterEndDateInput.value;
+    if (!startDate || !endDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
+    // Save to session and fetch new data
+    sessionStorage.setItem("startDateISO", startDate);
+    sessionStorage.setItem("endDateISO", endDate);
+    fetchHistoryData(startDate, endDate);
+  });
+
+  if (exportBtn) {
+    exportBtn.addEventListener("click", exportToExcel);
+  }
+
+  function initFilters() {
+    const start = sessionStorage.getItem("startDateISO") || "2025-01-01";
+    const end = sessionStorage.getItem("endDateISO") || new Date().toISOString().slice(0, 10);
+    filterStartDateInput.value = start;
+    filterEndDateInput.value = end;
+    return { startDate: start, endDate: end };
+  }
 });
