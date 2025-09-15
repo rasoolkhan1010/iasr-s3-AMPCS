@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // 0) Centralized backend base URL (set window.CONFIG.API_BASE in index.html)
+  // 0) Backend base URL
   const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
 
-  // --- 1) Security / session ---
+  // 1) Security / session
   const userRole = sessionStorage.getItem("userRole");
   let sd = sessionStorage.getItem("startDate");
   let ed = sessionStorage.getItem("endDate");
@@ -11,19 +11,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // US/ISO helpers
-  const isISODate = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
-  const isUSDate = (s) => typeof s === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(s);
-  const isoToUS = (iso) => {
+  // 2) Date helpers (ISO <-> US formats omitted for brevity, reuse your existing functions)
+  const isISODate = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const isUSDate = s => typeof s === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(s);
+  const isoToUS = iso => {
     const [y, m, d] = iso.split("-");
     return `${m}/${d}/${y}`;
   };
-  const usToISO = (us) => {
+  const usToISO = us => {
     const [m, d, y] = us.split("/");
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   };
 
-  // Normalize session to have both US and ISO
+  // Normalize filters date formats
   let startDateUS, endDateUS, startISO, endISO;
   if (isISODate(sd) && isISODate(ed)) {
     startISO = sd;
@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   sessionStorage.setItem("startDateISO", startISO);
   sessionStorage.setItem("endDateISO", endISO);
 
-  // --- 2) DOM refs ---
+  // 3) DOM references
   const tableLoading = document.getElementById("table-loading");
   const tableContainer = document.getElementById("table-container");
   const tableHead = document.querySelector("#data-table thead tr");
@@ -65,18 +65,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalItemCount = document.getElementById("modal-item-count");
   const dataCountElement = document.getElementById("data-count");
 
-  // --- 3) State ---
+  // 4) State
   let fullData = [];
   let currentFilteredData = [];
   let dataToSend = [];
   const rowsPerPage = 1000;
   let currentPage = 1;
 
-  // Headers and mappings
+  // 5) Headers and DB column mapping
   const desiredHeaders = [
     "Select", "Market-id", "company", "Itmdesc", "Cost",
-    "Total_stock", "month sale", "week sale",
-    "recommended qty", "required qty", "Total Cost",
+    "Total _Stock", "30_days", "W3",
+    "Recommended Quntitty", "required qty", "Total Cost",
     "recommended shipping", "Action"
   ];
   const columnMapping = {
@@ -84,16 +84,16 @@ document.addEventListener("DOMContentLoaded", () => {
     company: "company",
     Itmdesc: "Itmdesc",
     Cost: "cost",
-    Total_stock: "Total _Stock",
-    "month sale": "30_days",
-    "week sale": "W3",
-    "recommended qty": "Recommended Quntitty",
-    "recommended shipping": "Recommended Shipping"
+    "Total _Stock": "Total _Stock",
+    "30_days": "30_days",
+    "W3": "W3",
+    "Recommended Quntitty": "Recommended Quntitty",
+    "recommended shipping": "Recommended Shipping",
   };
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
-  const keyOf = (r) => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
+  const keyOf = r => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
 
-  // --- 4) Logout and export ---
+  // 6) Logout and export
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
       sessionStorage.clear();
@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (exportBtn) exportBtn.addEventListener("click", exportToExcel);
 
-  // --- 5) Pagination Controls ---
+  // 7) Pagination container insert
   const paginationContainer = document.createElement("div");
   paginationContainer.classList.add("pagination-container");
   paginationContainer.style.marginTop = "10px";
@@ -114,7 +114,6 @@ document.addEventListener("DOMContentLoaded", () => {
     paginationContainer.innerHTML = "";
     const totalPages = Math.ceil(currentFilteredData.length / rowsPerPage);
     if (totalPages <= 1) return;
-
     const createPageButton = (text, disabled, isCurrent = false) => {
       const btn = document.createElement("button");
       btn.textContent = text;
@@ -131,7 +130,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return btn;
     };
-
     const prevBtn = createPageButton("Previous", currentPage === 1);
     prevBtn.addEventListener("click", () => {
       if (currentPage > 1) {
@@ -157,7 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       paginationContainer.appendChild(pageBtn);
     }
-
     const nextBtn = createPageButton("Next", currentPage === totalPages);
     nextBtn.addEventListener("click", () => {
       if (currentPage < totalPages) {
@@ -167,7 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     paginationContainer.appendChild(nextBtn);
   }
-
   function updateTableByPage() {
     const startIdx = (currentPage - 1) * rowsPerPage;
     const endIdx = currentPage * rowsPerPage;
@@ -176,41 +172,28 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDataCount();
   }
 
-  // --- 6) Load data ---
-  fetchDataForRange();
+  // 8) Fetch data
   async function fetchDataForRange() {
     if (tableLoading) {
       tableLoading.textContent = `Loading data from ${startDateUS} to ${endDateUS}...`;
     }
     try {
-      // FIX: correct backend route and HTTPS (no localhost)
       const response = await fetch(`${API_BASE}/api/get-data-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ startDate: startISO, endDate: endISO }),
       });
-      if (!response.ok) {
-        let msg = "Failed to fetch data";
-        try {
-          const j = await response.json();
-          if (j && j.message) msg = j.message;
-        } catch (_) {}
-        throw new Error(msg);
-      }
+      if (!response.ok) throw new Error("Failed to fetch data");
       const result = await response.json();
-
-      fullData = (result.data || []).map((r) => {
-        const raw = r["Recommended Quntitty"];
-        const num = parseFloat(raw);
+      fullData = (result.data || []).map(r => {
+        const rqRaw = r["Recommended Quntitty"];
+        const numVal = parseFloat(rqRaw);
         return {
           ...r,
-          ["Recommended Quntitty"]:
-            raw === undefined || raw === null || raw === "" || Number.isNaN(num) ? "0" : String(num),
+          ["Recommended Quntitty"]: !rqRaw || Number.isNaN(numVal) ? "0" : String(numVal),
         };
       });
-
       fullData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-
       if (userRole !== "admin") {
         fullData = fullData.filter(row => row.Marketid === userRole);
       }
@@ -219,8 +202,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (tableLoading) tableLoading.textContent = `Error: ${error.message}`;
     }
   }
+  fetchDataForRange();
 
-  // --- 7) View init ---
+  // 9) Initialization and event wiring
   function initializeView() {
     if (!fullData || fullData.length === 0) {
       if (tableLoading) tableLoading.textContent = "No data available for the selected date range.";
@@ -229,6 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tableLoading) tableLoading.style.display = "none";
     if (tableContainer) tableContainer.style.display = "block";
 
+    // Populate filters, restrain for non-admin
     if (userRole !== "admin") {
       if (marketIdFilter) {
         marketIdFilter.disabled = true;
@@ -244,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const dates = [...new Set(fullData.map(r => r.Date).filter(Boolean))].sort();
       populateSelect(dateFilter, dates, "All Dates");
     }
-
+    // Quantity filter values setup
     const quantityOptions = {
       ALL: "All Quantities",
       less_than_zero: "Deficit",
@@ -257,18 +242,21 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTableHeaders();
     applyFilters();
 
+    // Filter event listeners
     if (marketIdFilter) marketIdFilter.addEventListener("change", () => { updateDependentFilters(); applyFilters(); });
     if (custnoFilter) custnoFilter.addEventListener("change", () => { updateDependentFilters(); applyFilters(); });
     if (itmdescFilter) itmdescFilter.addEventListener("change", applyFilters);
     if (dateFilter) dateFilter.addEventListener("change", applyFilters);
     if (quantityFilter) quantityFilter.addEventListener("change", applyFilters);
 
+    // Modal event listeners
     if (modalCancelBtn) modalCancelBtn.addEventListener("click", () => (approvalModal.style.display = "none"));
     if (modalOkayBtn) modalOkayBtn.addEventListener("click", sendApproval);
+
+    // Send selected event listener
     if (sendSelectedBtn) sendSelectedBtn.addEventListener("click", handleBulkSend);
   }
 
-  // --- 8) Filters and dropdown populate ---
   function updateDependentFilters() {
     if (!marketIdFilter) return;
     const marketQuery = marketIdFilter.value;
@@ -327,29 +315,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const itmdescQuery = itmdescFilter ? itmdescFilter.value : "ALL";
     const dateQuery = dateFilter ? dateFilter.value : "ALL";
     const quantityQuery = quantityFilter ? quantityFilter.value : "ALL";
-
     currentFilteredData = fullData.filter(row => {
       const marketMatch = marketQuery === "ALL" || row.Marketid === marketQuery;
       const custnoMatch = custnoQuery === "ALL" || row.custno === custnoQuery;
       const itmdescMatch = itmdescQuery === "ALL" || row.Itmdesc === itmdescQuery;
       const dateMatch = dateQuery === "ALL" || row.Date === dateQuery;
-
       const qRaw = row["Recommended Quntitty"];
       const quantity = Number.isNaN(parseFloat(qRaw)) ? 0 : parseFloat(qRaw);
-
       let quantityMatch = true;
       if (quantityQuery === "less_than_zero") quantityMatch = quantity < 0;
       else if (quantityQuery === "equal_to_zero") quantityMatch = quantity === 0;
       else if (quantityQuery === "more_than_zero") quantityMatch = quantity > 0;
-
       return marketMatch && custnoMatch && itmdescMatch && dateMatch && quantityMatch;
     });
-
-    currentPage = 1; // reset on filter change
+    currentPage = 1;
     updateTableByPage();
   }
 
-  // --- 9) Table Rendering ---
   function renderTableHeaders() {
     if (!tableHead) return;
     tableHead.innerHTML = "";
@@ -393,7 +375,6 @@ document.addEventListener("DOMContentLoaded", () => {
       desiredHeaders.forEach(headerKey => {
         const td = document.createElement("td");
         td.className = "px-6 py-4 whitespace-nowrap text-sm text-gray-800";
-
         if (headerKey === "Select") {
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
@@ -452,7 +433,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           const csvHeader = columnMapping[headerKey];
           let value = row[csvHeader];
-          if (headerKey === "recommended qty") {
+          if (headerKey === "Recommended Quntitty") {
             const n = parseFloat(value);
             value = value === undefined || value === null || value === "" || Number.isNaN(n) ? 0 : n;
           }
@@ -465,7 +446,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- 10) Approve flow (modal + bulk + POST) ---
+  // Modal + Approval flow
   function openSendModal(items) {
     if (!items || items.length === 0) {
       alert("Please select at least one item to send.");
@@ -476,7 +457,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modalApproverSelect) modalApproverSelect.value = "";
     if (approvalModal) approvalModal.style.display = "flex";
   }
-
   function handleBulkSend() {
     const selectedRowsData = [];
     if (!tableBody) return;
@@ -487,62 +467,56 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     openSendModal(selectedRowsData);
   }
-
- async function sendApproval() {
-  if (!dataToSend || dataToSend.length === 0) {
-    alert("Error: No data to send.");
-    return;
-  }
-
-  const approver = modalApproverSelect ? modalApproverSelect.value : "";
-  if (!approver) {
-    alert("Please select an approver.");
-    return;
-  }
-
-  for (const item of dataToSend) {
-    const rqRaw = item["Recommended Quntitty"];
-    const recommendedQty = Number.isNaN(parseFloat(rqRaw)) ? 0 : parseFloat(rqRaw);
-    const neededQty = item._neededQty !== undefined ? parseFloat(item._neededQty) : 0;
-    const itemCost = parseFloat(item.cost) || 0;
-    const sel = document.querySelector(`select.recommended-shipping[data-key="${keyOf(item)}"]`);
-    const shipping = sel ? sel.value : item["Recommended Shipping"] || "No order needed";
-    const totalCost = (neededQty * itemCost).toFixed(2);
-
-    try {
-      await fetch(`${API_BASE}/api/add-history`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          Marketid: item.Marketid,
-          company: item.company,
-          Itmdesc: item.Itmdesc,
-          cost: item.cost,
-          Total_Stock: item["Total _Stock"] || 0,
-          Original_Recommended_Qty: recommendedQty,
-          Order_Qty: neededQty,
-          Total_Cost: totalCost,
-          Recommended_Shipping: shipping,
-          Approved_By: approver
-        })
-      });
-    } catch (error) {
-      alert(`An error occurred while sending item: ${item.Itmdesc}. Process stopped.`);
+  async function sendApproval() {
+    if (!dataToSend || dataToSend.length === 0) {
+      alert("Error: No data to send.");
       return;
     }
+    const approver = modalApproverSelect ? modalApproverSelect.value : "";
+    if (!approver) {
+      alert("Please select an approver.");
+      return;
+    }
+    for (const item of dataToSend) {
+      const rqRaw = item["Recommended Quntitty"];
+      const recommendedQty = Number.isNaN(parseFloat(rqRaw)) ? 0 : parseFloat(rqRaw);
+      const neededQty = item._neededQty !== undefined ? parseFloat(item._neededQty) : 0;
+      const itemCost = parseFloat(item.cost) || 0;
+      const sel = document.querySelector(`select.recommended-shipping[data-key="${keyOf(item)}"]`);
+      const shipping = sel ? sel.value : item["Recommended Shipping"] || "No order needed";
+      const totalCost = (neededQty * itemCost).toFixed(2);
+      try {
+        await fetch(`${API_BASE}/api/add-history`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            Marketid: item.Marketid,
+            company: item.company,
+            Itmdesc: item.Itmdesc,
+            cost: item.cost,
+            "Total _Stock": item["Total _Stock"] || 0,
+            Original_Recommended_Qty: recommendedQty,
+            Order_Qty: neededQty,
+            Total_Cost: totalCost,
+            Recommended_Shipping: shipping,
+            Approved_By: approver,
+          }),
+        });
+      } catch (error) {
+        alert(`An error occurred while sending item: ${item.Itmdesc}. Process stopped.`);
+        return;
+      }
+    }
+    alert(`${dataToSend.length} item(s) sent for approval successfully!`);
+    if (approvalModal) approvalModal.style.display = "none";
+    dataToSend = [];
+    if (tableBody) {
+      tableBody.querySelectorAll("input.row-checkbox:checked").forEach(cb => (cb.checked = false));
+    }
+    applyFilters();
   }
 
-  alert(`${dataToSend.length} item(s) sent for approval successfully!`);
-  if (approvalModal) approvalModal.style.display = "none";
-  dataToSend = [];
-  if (tableBody) {
-    tableBody.querySelectorAll("input.row-checkbox:checked").forEach(cb => (cb.checked = false));
-  }
-  applyFilters();
-}
-
-
-  // --- 11) Row/column counts ---
+  // Data count update
   function updateDataCount() {
     if (!dataCountElement) return;
     const rowCount = currentFilteredData.length;
@@ -554,49 +528,4 @@ document.addEventListener("DOMContentLoaded", () => {
           )}, total ${rowCount} rows and ${colCount} columns`
         : "No data to display";
   }
-
-  // --- 12) Export (all filtered rows) ---
-  function exportToExcel() {
-    if (!currentFilteredData || currentFilteredData.length === 0) {
-      alert("No data to export.");
-      return;
-    }
-    const headersForExport = desiredHeaders.filter((h) => h !== "Select" && h !== "Action");
-    const dataForSheet = currentFilteredData.map((row) => {
-      const newRow = {};
-      headersForExport.forEach((headerKey) => {
-        if (headerKey === "required qty") {
-          const need = row._neededQty !== undefined ? row._neededQty : 0;
-          newRow[headerKey] = need;
-          return;
-        }
-        if (headerKey === "Total Cost") {
-          const need = row._neededQty !== undefined ? row._neededQty : 0;
-          const cst = parseFloat(row.cost) || 0;
-          newRow[headerKey] = (need * cst).toFixed(2);
-          return;
-        }
-        if (headerKey === "recommended qty") {
-          const qRaw = row["Recommended Quntitty"];
-          const q = Number.isNaN(parseFloat(qRaw)) ? 0 : parseFloat(qRaw);
-          newRow[headerKey] = q;
-          return;
-        }
-        const csvHeader = columnMapping[headerKey];
-        let value = row[csvHeader];
-        if (value === undefined || value === null || value === "") value = 0;
-        newRow[headerKey] = value;
-      });
-      return newRow;
-    });
-
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
-    XLSX.utils.book_append_sheet(workbook, worksheet, "SuggestionsData");
-    XLSX.writeFile(workbook, "suggestions_export.xlsx");
-  }
 });
-
-
-
-
