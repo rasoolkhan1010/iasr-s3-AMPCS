@@ -183,7 +183,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
       company,
       itmdesc,
       cost,
-      "Total_Stock" AS Total_stock,
+      "Total _Stock" AS Total_Stock,
       "Original_Recommended_Qty" AS original_recommended_qty,
       "Order_Qty" AS order_qty,
       "Total_Cost" AS total_cost,
