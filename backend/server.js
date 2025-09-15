@@ -149,7 +149,7 @@ app.get("/api/get-all-markets", async (req, res) => {
 // New: Add approved data to history_data table with correct column quoting
 app.post("/api/add-history", async (req, res) => {
   const {
-    Marketid, company, Itmdesc, cost, Total _Stock,
+    Marketid, company, Itmdesc, cost, Total_Stock,
     Original_Recommended_Qty, Order_Qty, Total_Cost,
     Recommended_Shipping, Approved_By
   } = req.body;
@@ -183,7 +183,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
       company,
       itmdesc,
       cost,
-      "Total _Stock" AS Total_Stock,
+      "Total_Stock" AS Total _Stock,
       "Original_Recommended_Qty" AS original_recommended_qty,
       "Order_Qty" AS order_qty,
       "Total_Cost" AS total_cost,
