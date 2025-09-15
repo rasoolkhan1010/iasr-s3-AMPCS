@@ -3,11 +3,11 @@ const cors = require("cors");
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://iasr-s3-3-front-end.onrender.com";
-const DATABASE_URL = process.env.DATABASE_URL ||"postgresql://admin:ZSYVyCmQynPYV8NJWBCLVea3YxkW630y@dpg-d3182cbuibrs73aajh5g-a/inventory_db_4al1";
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://admin:ZSYVyCmQynPYV8NJWBCLVea3YxkW630y@dpg-d3182cbuibrs73aajh5g-a/inventory_db_4al1";
 
 app.use(cors({
   origin: FRONTEND_URL,
@@ -146,7 +146,7 @@ app.get("/api/get-all-markets", async (req, res) => {
   }
 });
 
-// New: Add approved data to history_data table
+// New: Add approved data to history_data table with correct column quoting
 app.post("/api/add-history", async (req, res) => {
   const {
     Marketid, company, Itmdesc, cost, Total_Stock,
@@ -157,7 +157,7 @@ app.post("/api/add-history", async (req, res) => {
   try {
     const sql = `
       INSERT INTO history_data (
-        marketid, company, itmdesc, cost, "Total_Stock",
+        marketid, company, itmdesc, cost, "Total _Stock",
         "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
         "Recommended_Shipping", "Approved_By", approved_at
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
@@ -174,11 +174,9 @@ app.post("/api/add-history", async (req, res) => {
   }
 });
 
-
-// New: Get history data filtered by date range and optional filters
+// New: Get history data filtered by date range and optional filters with correct quoting and aliases
 app.post("/api/get-history-for-range", async (req, res) => {
   const { startDate, endDate, marketId, Itmdesc } = req.body;
-
   let sql = `
     SELECT
       marketid,
@@ -195,10 +193,8 @@ app.post("/api/get-history-for-range", async (req, res) => {
     FROM history_data
     WHERE approved_at BETWEEN $1 AND $2
   `;
-
   const params = [startDate, endDate];
   let idx = 3;
-
   if (marketId) {
     sql += ` AND marketid = $${idx++}`;
     params.push(marketId);
@@ -207,9 +203,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
     sql += ` AND itmdesc = $${idx++}`;
     params.push(Itmdesc);
   }
-  
   sql += ` ORDER BY approved_at DESC`;
-
   try {
     const result = await pool.query(sql, params);
     res.json({ data: result.rows });
@@ -218,8 +212,6 @@ app.post("/api/get-history-for-range", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch history.", error: err.message });
   }
 });
-
-
 
 // Root route
 app.get("/", (req, res) => res.send("OK - server up"));
