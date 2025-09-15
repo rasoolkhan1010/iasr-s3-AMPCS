@@ -178,6 +178,7 @@ app.post("/api/add-history", async (req, res) => {
 // New: Get history data filtered by date range and optional filters
 app.post("/api/get-history-for-range", async (req, res) => {
   const { startDate, endDate, marketId, Itmdesc } = req.body;
+
   let sql = `
     SELECT
       marketid,
@@ -185,17 +186,19 @@ app.post("/api/get-history-for-range", async (req, res) => {
       itmdesc,
       cost,
       "Total _Stock" AS total_stock,
-      "Original_Recom" AS original_recommended_qty,
+      "Original_Recommended_Qty" AS original_recommended_qty,
       "Order_Qty" AS order_qty,
       "Total_Cost" AS total_cost,
-      "Recommended_" AS recommended_shipping,
+      "Recommended_Shipping" AS recommended_shipping,
       "Approved_By" AS approved_by,
       approved_at
     FROM history_data
     WHERE approved_at BETWEEN $1 AND $2
   `;
+
   const params = [startDate, endDate];
   let idx = 3;
+
   if (marketId) {
     sql += ` AND marketid = $${idx++}`;
     params.push(marketId);
@@ -204,6 +207,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
     sql += ` AND itmdesc = $${idx++}`;
     params.push(Itmdesc);
   }
+  
   sql += ` ORDER BY approved_at DESC`;
 
   try {
@@ -211,7 +215,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
     res.json({ data: result.rows });
   } catch (err) {
     console.error("Get history error:", err);
-    res.status(500).json({ message: "Failed to fetch history", error: err.message });
+    res.status(500).json({ message: "Failed to fetch history.", error: err.message });
   }
 });
 
