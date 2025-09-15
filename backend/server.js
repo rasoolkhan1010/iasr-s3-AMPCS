@@ -149,34 +149,31 @@ app.get("/api/get-all-markets", async (req, res) => {
 // New: Add approved data to history_data table
 app.post("/api/add-history", async (req, res) => {
   const {
-    marketid, company, Itmdesc, cost, Total_Stock,
+    Marketid, company, Itmdesc, cost, Total_Stock,
     Original_Recommended_Qty, Order_Qty, Total_Cost,
     Recommended_Shipping, Approved_By
   } = req.body;
-
   const Approved_At = new Date().toISOString();
-
   try {
     const sql = `
-    INSERT INTO history_data (
-      marketid, company, Itmdesc, cost, "Total _Stock",
-      "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
-      "Recommended_Shipping", "Approved_By", Approved_At
-    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      INSERT INTO history_data (
+        marketid, company, itmdesc, cost, "Total_Stock",
+        "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
+        "Recommended_Shipping", "Approved_By", approved_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     `;
-
     await pool.query(sql, [
       Marketid, company, Itmdesc, cost, Total_Stock,
       Original_Recommended_Qty, Order_Qty, Total_Cost,
       Recommended_Shipping, Approved_By, Approved_At
     ]);
-
     res.json({ success: true });
   } catch (err) {
     console.error("Add history error:", err);
     res.status(500).json({ message: "Failed to save history record.", error: err.message });
   }
 });
+
 
 // New: Get history data filtered by date range and optional filters
 app.post("/api/get-history-for-range", async (req, res) => {
