@@ -178,12 +178,25 @@ app.post("/api/add-history", async (req, res) => {
 // New: Get history data filtered by date range and optional filters
 app.post("/api/get-history-for-range", async (req, res) => {
   const { startDate, endDate, marketId, custno, Itmdesc } = req.body;
-  let sql = `SELECT * FROM history_data WHERE Approved_At BETWEEN $1 AND $2`;
+  let sql = `
+    SELECT
+      marketid,
+      company,
+      itmdesc,
+      cost,
+      "Total_Stock" AS total_stock,
+      "Original_Recommended_Qty" AS original_recommended_qty,
+      "Order_Qty" AS order_qty,
+      "Total_Cost" AS total_cost,
+      "Recommended_Shipping" AS recommended_shipping,
+      "Approved_By" AS approved_by,
+      approved_at
+    FROM history_data WHERE approved_at BETWEEN $1 AND $2
+  `;
   const params = [startDate, endDate];
   let idx = 3;
-
   if (marketId) {
-    sql += ` AND Marketid = $${idx++}`;
+    sql += ` AND marketid = $${idx++}`;
     params.push(marketId);
   }
   if (custno) {
@@ -191,11 +204,10 @@ app.post("/api/get-history-for-range", async (req, res) => {
     params.push(custno);
   }
   if (Itmdesc) {
-    sql += ` AND Itmdesc = $${idx++}`;
+    sql += ` AND itmdesc = $${idx++}`;
     params.push(Itmdesc);
   }
-  sql += ` ORDER BY Approved_At DESC`;
-
+  sql += ` ORDER BY approved_at DESC`;
   try {
     const result = await pool.query(sql, params);
     res.json({ data: result.rows });
@@ -204,6 +216,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch history data.", error: err.message });
   }
 });
+
 
 // Root route
 app.get("/", (req, res) => res.send("OK - server up"));
