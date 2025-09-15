@@ -502,7 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
             company: item.company,
             Itmdesc: item.Itmdesc,
             cost: item.cost,
-            "Total _Stock": item["Total _Stock"] || 0,
+            "Total _Stock": item["Total_Stock"] || 0,
             Original_Recommended_Qty: recommendedQty,
             Order_Qty: neededQty,
             Total_Cost: totalCost,
@@ -574,3 +574,4 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
