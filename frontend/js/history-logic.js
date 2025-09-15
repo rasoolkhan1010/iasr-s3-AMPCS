@@ -40,14 +40,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Table Headers ---
+  const headers = [
+    "Marketid", "Company", "Itmdesc", "Cost", "Total Stock",
+    "Original Recommended Qty", "Order Qty", "Total Cost",
+    "Recommended Shipping", "Approved By", "Approved At"
+  ];
+
   function renderTableHeaders() {
     if (!tableHead) return;
     tableHead.innerHTML = "";
-    const headers = [
-      "Marketid", "company", "Itmdesc", "cost", "Total _Stock",
-      "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
-      "Recommended_Shipping", "Approved_By", "Approved_At"
-    ];
     headers.forEach(header => {
       const th = document.createElement("th");
       th.className = "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
@@ -57,13 +58,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Render Table Body ---
+  const dataKeys = [
+    "marketid","company","itmdesc","cost","total_stock",
+    "original_recommended_qty","order_qty","total_cost",
+    "recommended_shipping","approved_by","approved_at"
+  ];
+
   function renderTableBody(data) {
     if (!tableBody) return;
     tableBody.innerHTML = "";
     if (!data.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 11;
+      td.colSpan = headers.length;
       td.className = "text-center py-8 text-gray-500";
       td.textContent = "No records match the current filters.";
       tr.appendChild(td);
@@ -73,24 +80,26 @@ document.addEventListener("DOMContentLoaded", () => {
     data.forEach(row => {
       const tr = document.createElement("tr");
       tr.className = "hover:bg-gray-50";
-      [
-        "Marketid", "company", "Itmdesc", "cost", "Total _Stock",
-        "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
-        "Recommended_Shipping", "Approved_By", "Approved_At"
-      ].forEach(key => {
+      dataKeys.forEach(key => {
         const td = document.createElement("td");
         td.className = "px-6 py-4 whitespace-nowrap text-sm text-gray-800";
-        td.textContent = row[key] || "";
+        let val = row[key];
+        if (key === "approved_at" && val) {
+          // Format timestamp for display
+          val = new Date(val).toLocaleString();
+        }
+        td.textContent = val || "";
         tr.appendChild(td);
       });
       tableBody.appendChild(tr);
     });
   }
 
-  // --- Pagination ---
+  // --- Pagination --- 
   function renderPaginationControls() {
-    const paginationContainer = document.querySelector(".pagination-container") || createPaginationContainer();
-    paginationContainer.innerHTML = "";
+    const container = document.querySelector(".pagination-container") || createPaginationContainer();
+    container.innerHTML = "";
+    
     const totalPages = Math.ceil(currentFilteredData.length / rowsPerPage);
     if (totalPages <= 1) return;
 
@@ -111,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return btn;
     }
 
+    // Previous button
     const prevBtn = createPageButton("Previous", currentPage === 1);
     prevBtn.addEventListener("click", () => {
       if (currentPage > 1) {
@@ -118,8 +128,9 @@ document.addEventListener("DOMContentLoaded", () => {
         updateTableByPage();
       }
     });
-    paginationContainer.appendChild(prevBtn);
+    container.appendChild(prevBtn);
 
+    // Page number buttons
     let startPage = Math.max(1, currentPage - 4);
     let endPage = Math.min(totalPages, startPage + 9);
     if (endPage - startPage < 9) {
@@ -127,16 +138,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     for (let i = startPage; i <= endPage; i++) {
-      const pageBtn = createPageButton(i, false, i === currentPage);
+      const btn = createPageButton(i, false, i === currentPage);
       if (i !== currentPage) {
-        pageBtn.addEventListener("click", () => {
+        btn.addEventListener("click", () => {
           currentPage = i;
           updateTableByPage();
         });
       }
-      paginationContainer.appendChild(pageBtn);
+      container.appendChild(btn);
     }
 
+    // Next button
     const nextBtn = createPageButton("Next", currentPage === totalPages);
     nextBtn.addEventListener("click", () => {
       if (currentPage < totalPages) {
@@ -144,12 +156,12 @@ document.addEventListener("DOMContentLoaded", () => {
         updateTableByPage();
       }
     });
-    paginationContainer.appendChild(nextBtn);
+    container.appendChild(nextBtn);
   }
 
   function createPaginationContainer() {
     const container = document.createElement("div");
-    container.classList.add("pagination-container");
+    container.className = "pagination-container";
     container.style.marginTop = "10px";
     container.style.textAlign = "center";
     container.style.paddingBottom = "50px";
@@ -159,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return container;
   }
 
-  // --- Update Table with Pagination ---
+  // --- Update table with pagination ---
   function updateTableByPage() {
     const startIdx = (currentPage - 1) * rowsPerPage;
     const endIdx = currentPage * rowsPerPage;
@@ -171,15 +183,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateDataCount() {
     if (!dataCountElement) return;
     const rowCount = currentFilteredData.length;
-    const colCount = 11;
+    const colCount = headers.length;
     dataCountElement.textContent =
       rowCount > 0
         ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(rowCount / rowsPerPage)}, total ${rowCount} rows and ${colCount} columns`
         : "No data to display";
   }
 
-  // You can add any filter logic here if needed (reuse your existing one)
-
-  // --- Initial load ---
+  // --- Initial fetch
   fetchHistoryData();
 });
