@@ -13,18 +13,21 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentPage = 1;
   const rowsPerPage = 1000;
 
-  // Use your session-stored dates or defaults
+  // Use session-stored dates or fallback values
   const startDate = sessionStorage.getItem("startDateISO") || "2025-01-01";
   const endDate = sessionStorage.getItem("endDateISO") || new Date().toISOString();
 
-  // --- Fetch history from backend ---
+  // --- Fetch history data from backend ---
   async function fetchHistoryData() {
-    if (tableLoading) tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
+    if (tableLoading) {
+      tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
+      tableLoading.style.display = "";
+    }
     try {
       const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate })
+        body: JSON.stringify({ startDate, endDate }),
       });
       if (!response.ok) throw new Error("Failed to fetch history data");
       const json = await response.json();
@@ -35,17 +38,27 @@ document.addEventListener("DOMContentLoaded", () => {
       if (tableLoading) tableLoading.style.display = "none";
       if (tableContainer) tableContainer.style.display = "block";
     } catch (error) {
-      if (tableLoading) tableLoading.textContent = `Error loading history: ${error.message}`;
+      if (tableLoading) {
+        tableLoading.textContent = `Error loading history: ${error.message}`;
+        tableLoading.style.display = "";
+      }
+      if (tableContainer) tableContainer.style.display = "none";
     }
   }
 
-  // --- Table Headers ---
+  // --- Table headers and corresponding data keys ---
   const headers = [
     "Marketid", "Company", "Itmdesc", "Cost", "Total Stock",
     "Original Recommended Qty", "Order Qty", "Total Cost",
-    "Recommended Shipping", "Approved By", "Approved At"
+    "Recommended Shipping", "Approved By", "Approved At",
+  ];
+  const dataKeys = [
+    "marketid", "company", "itmdesc", "cost", "total_stock",
+    "original_recommended_qty", "order_qty", "total_cost",
+    "recommended_shipping", "approved_by", "approved_at",
   ];
 
+  // --- Render table headers ---
   function renderTableHeaders() {
     if (!tableHead) return;
     tableHead.innerHTML = "";
@@ -57,16 +70,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Render Table Body ---
-  const dataKeys = [
-    "marketid","company","itmdesc","cost","total_stock",
-    "original_recommended_qty","order_qty","total_cost",
-    "recommended_shipping","approved_by","approved_at"
-  ];
-
+  // --- Render table body rows ---
   function renderTableBody(data) {
     if (!tableBody) return;
     tableBody.innerHTML = "";
+
     if (!data.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
@@ -77,31 +85,51 @@ document.addEventListener("DOMContentLoaded", () => {
       tableBody.appendChild(tr);
       return;
     }
+
     data.forEach(row => {
       const tr = document.createElement("tr");
       tr.className = "hover:bg-gray-50";
+
       dataKeys.forEach(key => {
         const td = document.createElement("td");
         td.className = "px-6 py-4 whitespace-nowrap text-sm text-gray-800";
+
         let val = row[key];
         if (key === "approved_at" && val) {
-          // Format timestamp for display
+          // Format timestamp for better readability
           val = new Date(val).toLocaleString();
         }
-        td.textContent = val || "";
+        td.textContent = val !== null && val !== undefined ? val : "";
         tr.appendChild(td);
       });
+
       tableBody.appendChild(tr);
     });
   }
 
-  // --- Pagination --- 
+  // --- Create pagination container if missing ---
+  function createPaginationContainer() {
+    const container = document.createElement("div");
+    container.className = "pagination-container";
+    container.style.marginTop = "10px";
+    container.style.textAlign = "center";
+    container.style.paddingBottom = "50px";
+
+    if (tableContainer) {
+      tableContainer.parentNode.insertBefore(container, tableContainer.nextSibling);
+    }
+    return container;
+  }
+
+  // --- Render pagination controls ---
   function renderPaginationControls() {
     const container = document.querySelector(".pagination-container") || createPaginationContainer();
     container.innerHTML = "";
-    
+
     const totalPages = Math.ceil(currentFilteredData.length / rowsPerPage);
-    if (totalPages <= 1) return;
+    if (totalPages <= 1) {
+      return;
+    }
 
     function createPageButton(text, disabled, isCurrent = false) {
       const btn = document.createElement("button");
@@ -112,11 +140,13 @@ document.addEventListener("DOMContentLoaded", () => {
         (disabled
           ? "bg-gray-200 text-gray-400 cursor-not-allowed border-gray-300"
           : "bg-white text-gray-700 hover:bg-blue-600 hover:text-white border-gray-300");
+
       if (isCurrent) {
         btn.className =
           "mx-1 px-3 py-1 rounded border text-sm font-bold bg-blue-600 text-white border-blue-700 shadow";
         btn.disabled = true;
       }
+
       return btn;
     }
 
@@ -130,13 +160,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     container.appendChild(prevBtn);
 
-    // Page number buttons
+    // Page number buttons (show max 10)
     let startPage = Math.max(1, currentPage - 4);
     let endPage = Math.min(totalPages, startPage + 9);
     if (endPage - startPage < 9) {
       startPage = Math.max(1, endPage - 9);
     }
-
     for (let i = startPage; i <= endPage; i++) {
       const btn = createPageButton(i, false, i === currentPage);
       if (i !== currentPage) {
@@ -159,19 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
     container.appendChild(nextBtn);
   }
 
-  function createPaginationContainer() {
-    const container = document.createElement("div");
-    container.className = "pagination-container";
-    container.style.marginTop = "10px";
-    container.style.textAlign = "center";
-    container.style.paddingBottom = "50px";
-    if (tableContainer) {
-      tableContainer.parentNode.insertBefore(container, tableContainer.nextSibling);
-    }
-    return container;
-  }
-
-  // --- Update table with pagination ---
+  // --- Update displayed table data according to current page ---
   function updateTableByPage() {
     const startIdx = (currentPage - 1) * rowsPerPage;
     const endIdx = currentPage * rowsPerPage;
@@ -180,16 +197,21 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDataCount();
   }
 
+  // --- Update data count display ---
   function updateDataCount() {
     if (!dataCountElement) return;
     const rowCount = currentFilteredData.length;
     const colCount = headers.length;
     dataCountElement.textContent =
       rowCount > 0
-        ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(rowCount / rowsPerPage)}, total ${rowCount} rows and ${colCount} columns`
+        ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(
+            rowCount / rowsPerPage
+          )}, total ${rowCount} rows and ${colCount} columns`
         : "No data to display";
   }
 
-  // --- Initial fetch
+  // --- Initial data fetch ---
   fetchHistoryData();
+
+  // Optional: export to Excel functionality can be added here if needed
 });
