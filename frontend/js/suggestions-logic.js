@@ -488,75 +488,59 @@ document.addEventListener("DOMContentLoaded", () => {
     openSendModal(selectedRowsData);
   }
 
-  async function sendApproval() {
-    if (!dataToSend || dataToSend.length === 0) {
-      alert("Error: No data to send.");
-      return;
-    }
-    const approver = modalApproverSelect ? modalApproverSelect.value : "";
-    if (!approver) {
-      alert("Please select an approver.");
-      return;
-    }
-
-    for (const item of dataToSend) {
-      const rqRaw = item["Recommended Quntitty"];
-      const recommendedQty = Number.isNaN(parseFloat(rqRaw)) ? 0 : parseFloat(rqRaw);
-      const neededQty = item._neededQty !== undefined ? parseFloat(item._neededQty) : 0;
-      const itemCost = parseFloat(item.cost) || 0;
-
-      const sel = document.querySelector(`select.recommended-shipping[data-key="${keyOf(item)}"]`);
-      const shipping = sel ? sel.value : item["Recommended Shipping"] || "No order needed";
-
-      const totalCost = (neededQty * itemCost).toFixed(2);
-
-      const headers = [
-        "Marketid",
-        "company",
-        "Itmdesc",
-        "cost",
-        "Total_Stock",
-        "Original_Recommended_Qty",
-        "Order_Qty",
-        "Total_Cost",
-        "Recommended_Shipping",
-        "Approved_By",
-      ];
-
-      const data = [
-        item.Marketid,
-        item.company,
-        item.Itmdesc,
-        itemCost,
-        item["Total _Stock"] || 0,
-        recommendedQty,
-        neededQty,
-        totalCost,
-        shipping,
-        approver,
-      ];
-
-      try {
-        // FIX: correct backend route and HTTPS (no localhost)
-        await fetch(`${API_BASE}/api/approve`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ headers, data }),
-        });
-      } catch (error) {
-        alert(`An error occurred while sending item: ${item.Itmdesc}. Process stopped.`);
-        return;
-      }
-    }
-
-    alert(`${dataToSend.length} item(s) sent for approval successfully!`);
-    if (approvalModal) approvalModal.style.display = "none";
-    dataToSend = [];
-    if (tableBody) {
-      tableBody.querySelectorAll("input.row-checkbox:checked").forEach((cb) => (cb.checked = false));
-    }
-    applyFilters();
+ async function sendApproval() {
+  if (!dataToSend || dataToSend.length === 0) {
+    alert("Error: No data to send.");
+    return;
   }
+
+  const approver = modalApproverSelect ? modalApproverSelect.value : "";
+  if (!approver) {
+    alert("Please select an approver.");
+    return;
+  }
+
+  for (const item of dataToSend) {
+    const rqRaw = item["Recommended Quntitty"];
+    const recommendedQty = Number.isNaN(parseFloat(rqRaw)) ? 0 : parseFloat(rqRaw);
+    const neededQty = item._neededQty !== undefined ? parseFloat(item._neededQty) : 0;
+    const itemCost = parseFloat(item.cost) || 0;
+    const sel = document.querySelector(`select.recommended-shipping[data-key="${keyOf(item)}"]`);
+    const shipping = sel ? sel.value : item["Recommended Shipping"] || "No order needed";
+    const totalCost = (neededQty * itemCost).toFixed(2);
+
+    try {
+      await fetch(`${API_BASE}/api/add-history`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          Marketid: item.Marketid,
+          company: item.company,
+          Itmdesc: item.Itmdesc,
+          cost: item.cost,
+          Total_Stock: item["Total _Stock"] || 0,
+          Original_Recommended_Qty: recommendedQty,
+          Order_Qty: neededQty,
+          Total_Cost: totalCost,
+          Recommended_Shipping: shipping,
+          Approved_By: approver
+        })
+      });
+    } catch (error) {
+      alert(`An error occurred while sending item: ${item.Itmdesc}. Process stopped.`);
+      return;
+    }
+  }
+
+  alert(`${dataToSend.length} item(s) sent for approval successfully!`);
+  if (approvalModal) approvalModal.style.display = "none";
+  dataToSend = [];
+  if (tableBody) {
+    tableBody.querySelectorAll("input.row-checkbox:checked").forEach(cb => (cb.checked = false));
+  }
+  applyFilters();
+}
+
 
   // --- 11) Row/column counts ---
   function updateDataCount() {
@@ -612,6 +596,7 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
 
 
 
