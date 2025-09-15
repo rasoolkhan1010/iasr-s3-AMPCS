@@ -149,7 +149,7 @@ app.get("/api/get-all-markets", async (req, res) => {
 // New: Add approved data to history_data table with correct column quoting
 app.post("/api/add-history", async (req, res) => {
   const {
-    Marketid, company, Itmdesc, cost, Total_Stock,
+    Marketid, company, Itmdesc, cost, Total _Stock,
     Original_Recommended_Qty, Order_Qty, Total_Cost,
     Recommended_Shipping, Approved_By
   } = req.body;
@@ -157,7 +157,7 @@ app.post("/api/add-history", async (req, res) => {
   try {
     const sql = `
       INSERT INTO history_data (
-        marketid, company, itmdesc, cost, "Total _Stock",
+        marketid, company, itmdesc, cost, "Total_Stock",
         "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
         "Recommended_Shipping", "Approved_By", approved_at
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
