@@ -159,7 +159,7 @@ app.post("/api/add-history", async (req, res) => {
   try {
     const sql = `
     INSERT INTO history_data (
-      Marketid, company, Itmdesc, cost, "Total _Stock",
+      marketid, company, Itmdesc, cost, "Total _Stock",
       "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
       "Recommended_Shipping", "Approved_By", Approved_At
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
