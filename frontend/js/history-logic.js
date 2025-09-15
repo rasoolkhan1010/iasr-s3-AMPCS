@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "Recommended Shipping", "Approved By", "Approved At",
   ];
   const dataKeys = [
-    "marketid", "company", "itmdesc", "cost", "Total_stock",
+    "marketid", "company", "itmdesc", "cost", "Total_Stock",
     "original_recommended_qty", "order_qty", "total_cost",
     "recommended_shipping", "approved_by", "approved_at",
   ];
@@ -251,4 +251,5 @@ document.addEventListener("DOMContentLoaded", () => {
     return { startDate: start, endDate: end };
   }
 });
+
 
