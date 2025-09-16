@@ -350,8 +350,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const header = headers[i];
         const td = document.createElement("td");
         td.className = "px-6 py-4 whitespace-nowrap text-sm text-gray-800";
-        // Add data label for mobile responsive display
-        td.setAttribute("data-label", header.replace(/_/g, " "));
         let value = row[header];
         if (value === undefined || value === null || value === "") value = 0;
         td.textContent = value;
