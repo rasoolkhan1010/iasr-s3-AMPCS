@@ -375,6 +375,8 @@ document.addEventListener("DOMContentLoaded", () => {
       desiredHeaders.forEach(headerKey => {
         const td = document.createElement("td");
         td.className = "px-6 py-4 whitespace-nowrap text-sm text-gray-800";
+        // Add data label for mobile responsive display
+        td.setAttribute("data-label", headerKey);
 
         if (headerKey === "Select") {
           const checkbox = document.createElement("input");
