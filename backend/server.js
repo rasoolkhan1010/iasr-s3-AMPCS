@@ -7,13 +7,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://iasr-s3-3-front-end.onrender.com";
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://admin:ZSYVyCmQynPYV8NJWBCLVea3YxkW630y@dpg-d3182cbuibrs73aajh5g-a/inventory_db_4al1";
+const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  "postgresql://admin:ZSYVyCmQynPYV8NJWBCLVea3YxkW630y@dpg-d3182cbuibrs73aajh5g-a/inventory_db_4al1";
 
-app.use(cors({
-  origin: FRONTEND_URL,
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(
+  cors({
+    origin: FRONTEND_URL,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json());
 
@@ -21,14 +25,14 @@ const pool = new Pool(
   DATABASE_URL
     ? {
         connectionString: DATABASE_URL,
-        ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
+        ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
       }
     : {
         user: process.env.PGUSER || "postgres",
         host: process.env.PGHOST || "localhost",
         database: process.env.PGDATABASE || "postgres",
         password: process.env.PGPASSWORD || "admin",
-        port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432
+        port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
       }
 );
 
@@ -42,12 +46,33 @@ function formatDateMMDDYYYY(d) {
 }
 
 const CSV_HEADERS = [
-  "Date","Marketid","custno","company","Item","Status","Itmdesc","In_Stock","In_Transit","Total _Stock",
-  "cost","Allocations","W1","W2","W3","30_days","OVERNIGHT","To_Order_Cost_Overnight","2_DAY_SHIP",
-  "To_Order_Cost_2DAY","GROUND","To_Order_Cost_GROUND","Recommended Quntitty","Recommended Shipping"
+  "Date",
+  "Marketid",
+  "custno",
+  "company",
+  "Item",
+  "Status",
+  "Itmdesc",
+  "In_Stock",
+  "In_Transit",
+  "Total_Stock",
+  "cost",
+  "Allocations",
+  "W1",
+  "W2",
+  "W3",
+  "30_days",
+  "OVERNIGHT",
+  "To_Order_Cost_Overnight",
+  "2_DAY_SHIP",
+  "To_Order_Cost_2DAY",
+  "GROUND",
+  "To_Order_Cost_GROUND",
+  "Recommended Quntitty",
+  "Recommended Shipping",
 ];
 
-// Health check
+// Health check endpoint
 app.get("/health", async (req, res) => {
   try {
     const now = await pool.query("SELECT NOW()");
@@ -65,6 +90,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
   try {
     const start = startDate;
+    // Append time to include whole day endDate until 23:59:59
     const end = `${endDate} 23:59:59`;
     const q = `SELECT * FROM public.inventory_data WHERE date BETWEEN $1 AND $2 ORDER BY date ASC`;
     const result = await pool.query(q, [start, end]);
@@ -72,30 +98,30 @@ app.post("/api/get-data-for-range", async (req, res) => {
       return res.json({ headers: CSV_HEADERS, data: [] });
     }
     const mapped = result.rows.map((r) => ({
-      "Date": formatDateMMDDYYYY(r.date),
-      "Marketid": r.marketid || "",
-      "custno": r.custno || "",
-      "company": r.company || "",
-      "Item": r.item || "",
-      "Status": r.status || "",
-      "Itmdesc": r.itmdesc || "",
-      "In_Stock": r.in_stock != null ? r.in_stock : 0,
-      "In_Transit": r.in_transit != null ? r.in_transit : 0,
-      "Total _Stock": r.total_stock != null ? r.total_stock : 0,
-      "cost": r.cost != null ? Number(r.cost) : 0,
-      "Allocations": r.allocations != null ? r.allocations : 0,
-      "W1": r.w1 != null ? r.w1 : 0,
-      "W2": r.w2 != null ? r.w2 : 0,
-      "W3": r.w3 != null ? r.w3 : 0,
+      Date: formatDateMMDDYYYY(r.date),
+      Marketid: r.marketid || "",
+      custno: r.custno || "",
+      company: r.company || "",
+      Item: r.item || "",
+      Status: r.status || "",
+      Itmdesc: r.itmdesc || "",
+      In_Stock: r.in_stock != null ? r.in_stock : 0,
+      In_Transit: r.in_transit != null ? r.in_transit : 0,
+      Total_Stock: r.total_stock != null ? r.total_stock : 0,
+      cost: r.cost != null ? Number(r.cost) : 0,
+      Allocations: r.allocations != null ? r.allocations : 0,
+      W1: r.w1 != null ? r.w1 : 0,
+      W2: r.w2 != null ? r.w2 : 0,
+      W3: r.w3 != null ? r.w3 : 0,
       "30_days": r.days_30 != null ? r.days_30 : 0,
-      "OVERNIGHT": r.overnight != null ? r.overnight : 0,
-      "To_Order_Cost_Overnight": r.to_order_cost_overnight != null ? Number(r.to_order_cost_overnight) : 0,
+      OVERNIGHT: r.overnight != null ? r.overnight : 0,
+      To_Order_Cost_Overnight: r.to_order_cost_overnight != null ? Number(r.to_order_cost_overnight) : 0,
       "2_DAY_SHIP": r.two_day_ship != null ? r.two_day_ship : 0,
-      "To_Order_Cost_2DAY": r.to_order_cost_2day != null ? Number(r.to_order_cost_2day) : 0,
-      "GROUND": r.ground != null ? r.ground : 0,
-      "To_Order_Cost_GROUND": r.to_order_cost_ground != null ? Number(r.to_order_cost_ground) : 0,
+      To_Order_Cost_2DAY: r.to_order_cost_2day != null ? Number(r.to_order_cost_2day) : 0,
+      GROUND: r.ground != null ? r.ground : 0,
+      To_Order_Cost_GROUND: r.to_order_cost_ground != null ? Number(r.to_order_cost_ground) : 0,
       "Recommended Quntitty": r.recommended_quantity != null ? String(r.recommended_quantity) : "",
-      "Recommended Shipping": r.recommended_shipping != null ? String(r.recommended_shipping) : ""
+      "Recommended Shipping": r.recommended_shipping != null ? String(r.recommended_shipping) : "",
     }));
     res.json({ headers: CSV_HEADERS, data: mapped });
   } catch (err) {
@@ -104,7 +130,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
 });
 
-// Existing approve endpoint writing to CSV (keep intact)
+// Existing approve endpoint for writing to CSV
 app.post("/api/approve", (req, res) => {
   const { headers, data } = req.body;
   const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
@@ -123,7 +149,7 @@ app.post("/api/approve", (req, res) => {
   });
 });
 
-// Serve CSV file (keep intact)
+// Serve CSV file
 app.get("/approved_suggestion.csv", (req, res) => {
   const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
   res.sendFile(csvFilePath, (err) => {
@@ -133,12 +159,12 @@ app.get("/approved_suggestion.csv", (req, res) => {
   });
 });
 
-// Markets endpoint (keep intact)
+// Markets endpoint
 app.get("/api/get-all-markets", async (req, res) => {
   try {
     const q = `SELECT DISTINCT marketid FROM public.inventory_data WHERE marketid IS NOT NULL ORDER BY marketid ASC`;
     const result = await pool.query(q);
-    const markets = result.rows.map(r => r.marketid);
+    const markets = result.rows.map((r) => r.marketid);
     res.json({ data: markets });
   } catch (err) {
     console.error("DB error (get-all-markets):", err);
@@ -146,12 +172,19 @@ app.get("/api/get-all-markets", async (req, res) => {
   }
 });
 
-// New: Add approved data to history_data table with correct column quoting
+// Add approved data to history_data table with correct quoting
 app.post("/api/add-history", async (req, res) => {
   const {
-    Marketid, company, Itmdesc, cost, Total_Stock,
-    Original_Recommended_Qty, Order_Qty, Total_Cost,
-    Recommended_Shipping, Approved_By
+    Marketid,
+    company,
+    Itmdesc,
+    cost,
+    Total_Stock,
+    Original_Recommended_Qty,
+    Order_Qty,
+    Total_Cost,
+    Recommended_Shipping,
+    Approved_By,
   } = req.body;
   const Approved_At = new Date().toISOString();
   try {
@@ -163,9 +196,17 @@ app.post("/api/add-history", async (req, res) => {
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     `;
     await pool.query(sql, [
-      Marketid, company, Itmdesc, cost, Total_Stock,
-      Original_Recommended_Qty, Order_Qty, Total_Cost,
-      Recommended_Shipping, Approved_By, Approved_At
+      Marketid,
+      company,
+      Itmdesc,
+      cost,
+      Total_Stock,
+      Original_Recommended_Qty,
+      Order_Qty,
+      Total_Cost,
+      Recommended_Shipping,
+      Approved_By,
+      Approved_At,
     ]);
     res.json({ success: true });
   } catch (err) {
@@ -174,9 +215,11 @@ app.post("/api/add-history", async (req, res) => {
   }
 });
 
-// New: Get history data filtered by date range and optional filters with correct quoting and aliases
+// Get history data filtered by date range and optional filters with endDate inclusive to whole day
 app.post("/api/get-history-for-range", async (req, res) => {
   const { startDate, endDate, marketId, Itmdesc } = req.body;
+  // Append time to endDate to include entire day
+  const inclusiveEndDate = `${endDate} 23:59:59`;
   let sql = `
     SELECT
       marketid,
@@ -193,7 +236,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
     FROM history_data
     WHERE approved_at BETWEEN $1 AND $2
   `;
-  const params = [startDate, endDate];
+  const params = [startDate, inclusiveEndDate];
   let idx = 3;
   if (marketId) {
     sql += ` AND marketid = $${idx++}`;
@@ -213,7 +256,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
   }
 });
 
-// Root route
+// Root
 app.get("/", (req, res) => res.send("OK - server up"));
 
 // Start server
