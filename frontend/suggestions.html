@@ -16,10 +16,9 @@
     /* Compact table cells; Tailwind remains available everywhere */
     .compact-table th,
     .compact-table td {
-      padding: 3px 5px !important; /* Even tighter for mobile */
-      font-size: 0.7rem;           /* Smaller text for mobile */
-      white-space: nowrap;         /* prevent wrapping in cells */
-      border: 1px solid #e5e7eb;  /* Add borders for better readability */
+      padding: 4px 7px !important; /* tighter than default py-4 px-6 */
+      font-size: 0.8rem;            /* smaller text for dense rows */
+      white-space: nowrap;          /* prevent wrapping in cells */
     }
     .table-container {
       width: 100%;
@@ -28,74 +27,25 @@
     #reddd{
       color: red;
     }
-    
-    /* Responsive table adjustments */
-    @media (min-width: 640px) {
-        .compact-table th, .compact-table td {
-            padding: 4px 7px !important;
-            font-size: 0.75rem !important;
-        }
-    }
-    
-    @media (min-width: 1024px) {
-        .compact-table th, .compact-table td {
-            padding: 6px 10px !important;
-            font-size: 0.8rem !important;
-        }
-    }
-    
-    .table-container {
-      -webkit-overflow-scrolling: touch !important;
-      border: 1px solid #e5e7eb !important;
-      border-radius: 0.5rem !important;
-    }
-    
-    /* Sticky header for better UX on mobile */
-    .compact-table thead th {
-        position: sticky;
-        top: 0;
-        background-color: #f9fafb;
-        z-index: 10;
-    }
-    
-    /* Mobile navigation enhancements */
-    @media (max-width: 640px) {
-        .container {
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-        }
-        
-        /* Add scroll indicator for tables on mobile */
-        .table-container::after {
-            content: '← Scroll horizontally to see more →';
-            display: block;
-            text-align: center;
-            font-size: 0.75rem;
-            color: #6b7280;
-            padding: 0.5rem;
-            background-color: #f9fafb;
-            border-top: 1px solid #e5e7eb;
-        }
-    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
   <!-- Header -->
   <header class="bg-white shadow-md">
-    <div class="container mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-      <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Recommendation</h1>
-      <nav class="flex gap-2 sm:gap-4">
-        <a href="dashboard.html" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-3 sm:px-4 rounded text-sm sm:text-base whitespace-nowrap">Back</a>
-        <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 sm:px-4 rounded text-sm sm:text-base whitespace-nowrap">Logout</button>
+    <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-gray-800">Recommendation</h1>
+      <nav class="space-x-4">
+        <a href="dashboard.html" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded">Back</a>
+        <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Logout</button>
       </nav>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main class="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+  <main class="container mx-auto px-6 py-8">
     <!-- Filters and Actions -->
-    <div class="bg-white p-3 sm:p-4 rounded-lg shadow-md mb-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
+    <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <!-- Market Filter -->
         <div>
           <label for="market-id-filter" class="text-sm font-medium text-gray-700">Market</label>
@@ -135,21 +85,21 @@
 
 
       <!-- Action Buttons -->
-<div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mt-4 gap-4">
+<div class="flex justify-between items-center mt-4">
   <!-- Left side Disclaimer -->
-  <p id="reddd" class="font-semibold text-xs sm:text-sm text-left bg-red-50 border border-red-300 rounded-md px-3 py-2 flex-shrink-0">
+  <p id="reddd" class="font-semibold text-sm md:text-base text-left bg-red-50 border border-red-300 rounded-md px-4 py-2">
     ⚠️ Disclaimer: Shipping charges are not included
   </p>
 
   <!-- Right side Buttons -->
-  <div class="flex flex-wrap gap-2 sm:gap-4 justify-center lg:justify-end">
-    <button id="send-selected-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 sm:px-4 rounded text-sm sm:text-base whitespace-nowrap">
+  <div class="flex space-x-4">
+    <button id="send-selected-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
       Approve Selected
     </button>
-    <a href="history.html" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 sm:px-4 rounded text-sm sm:text-base whitespace-nowrap">
+    <a href="history.html" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
       View History
     </a>
-    <button id="export-btn" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-3 sm:px-4 rounded text-sm sm:text-base whitespace-nowrap">
+    <button id="export-btn" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded">
       Export to Excel
     </button>
   </div>
