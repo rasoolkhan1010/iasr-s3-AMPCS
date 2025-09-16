@@ -10,16 +10,63 @@
     #export-btn {
       background-color: rgb(26, 25, 25);
     }
+    
+    /* Responsive table improvements */
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+    }
+    
+    /* Table cell styling for better mobile experience */
+    #history-table th, #history-table td {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        border: 1px solid #e5e7eb;
+    }
+    
+    @media (max-width: 640px) {
+        #history-table th, #history-table td {
+            padding: 4px 6px;
+            font-size: 0.75rem;
+        }
+        
+        .container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+        
+        /* Add scroll indicator for tables on mobile */
+        .overflow-x-auto::after {
+            content: '← Scroll horizontally to see more →';
+            display: block;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #6b7280;
+            padding: 0.5rem;
+            background-color: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+        }
+    }
+    
+    /* Sticky header */
+    #history-table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f9fafb;
+        z-index: 10;
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
   <!-- Header -->
   <header class="bg-white shadow-md">
-    <div class="container mx-auto px-6 py-4 flex justify-between items-center">
-      <h1 class="text-2xl font-bold text-gray-800">Approval History</h1>
-      <div class="flex space-x-4">
-        <button id="export-btn" class="px-4 py-2 bg-green-600 text-white rounded">Export to Excel</button>
-        <a href="suggestions.html" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+    <div class="container mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Approval History</h1>
+      <div class="flex flex-wrap gap-2 sm:gap-4">
+        <button id="export-btn" class="px-3 sm:px-4 py-2 bg-green-600 text-white rounded text-sm sm:text-base whitespace-nowrap">Export to Excel</button>
+        <a href="suggestions.html" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 sm:px-4 rounded text-sm sm:text-base whitespace-nowrap">
           &larr; Back to Suggestions
         </a>
       </div>
@@ -27,9 +74,9 @@
   </header>
 
   <!-- Main Content -->
-  <main class="container mx-auto px-6 py-8">
+  <main class="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
     <!-- Filter Section -->
-    <div class="mb-6 flex space-x-4 items-center">
+    <div class="mb-6 flex flex-wrap gap-4 items-center">
       <label>
         Start Date:
         <input id="filter-start-date" type="date" class="border rounded px-2 py-1" />
