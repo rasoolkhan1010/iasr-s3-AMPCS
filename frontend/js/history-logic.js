@@ -28,21 +28,40 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Fetch history data with filter ---
-  async function fetchHistoryData(startDate, endDate) {
+async function fetchHistoryData(startDate, endDate) {
+  if (tableLoading) {
+    tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
+    tableLoading.style.display = "";
+  }
+  try {
+    const userRole = sessionStorage.getItem("userRole") || "admin"; // get role from session storage
+    const response = await fetch(`${API_BASE}/api/get-history-for-range`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        startDate,
+        endDate,
+        userRole, // Pass the userRole here
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to fetch history data");
+    const json = await response.json();
+    fullHistoryData = json.data || [];
+    currentFilteredData = fullHistoryData;
+    currentPage = 1;
+    renderTableHeaders();
+    updateTableByPage();
+    if (tableLoading) tableLoading.style.display = "none";
+    if (tableContainer) tableContainer.style.display = "block";
+  } catch (error) {
     if (tableLoading) {
-      tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
+      tableLoading.textContent = `Error loading history: ${error.message}`;
       tableLoading.style.display = "";
     }
-    try {
-     const response = await fetch(`${API_BASE}/api/get-history-range`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      startDate,
-      endDate,
-      userRole  // Pass the userRole here
-    }
-      );
+    if (tableContainer) tableContainer.style.display = "none";
+  }
+}
+
       if (!response.ok) throw new Error("Failed to fetch history data");
       const json = await response.json();
       fullHistoryData = json.data || [];
@@ -257,5 +276,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return { startDate: start, endDate: end };
   }
 });
+
 
 
