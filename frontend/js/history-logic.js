@@ -1,6 +1,4 @@
-
 document.addEventListener("DOMContentLoaded", () => {
-  // --- DOM Elements ---
   const tableLoading = document.getElementById("table-loading");
   const tableContainer = document.getElementById("table-container");
   const tableHead = document.querySelector("#history-table thead tr");
@@ -11,43 +9,47 @@ document.addEventListener("DOMContentLoaded", () => {
   const filterEndDateInput = document.getElementById("filter-end-date");
   const applyFilterBtn = document.getElementById("apply-filter-btn");
 
-  // --- State ---
   let fullHistoryData = [];
   let currentFilteredData = [];
   let currentPage = 1;
   const rowsPerPage = 1000;
 
-  // Initialize filters from sessionStorage or defaults
   function initFilters() {
     const start = sessionStorage.getItem("startDateISO") || "2025-01-01";
-    const end = sessionStorage.getItem("endDateISO") || new Date().toISOString().slice(0, 10);
+    const end = sessionStorage.getItem("endDateISO") || new Date().toISOString().slice(0,10);
     filterStartDateInput.value = start;
     filterEndDateInput.value = end;
     return { startDate: start, endDate: end };
   }
 
-  // --- Fetch history data with filter ---
   async function fetchHistoryData(startDate, endDate) {
     if (tableLoading) {
       tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
       tableLoading.style.display = "";
     }
     try {
+      const userRole = sessionStorage.getItem("userRole") || "admin";
+      // Debug log to check sent marketid
+      console.log("Sending history request with marketid:", userRole);
+
       const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate }),
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ startDate, endDate, marketid: userRole }),
       });
       if (!response.ok) throw new Error("Failed to fetch history data");
+
       const json = await response.json();
       fullHistoryData = json.data || [];
       currentFilteredData = fullHistoryData;
       currentPage = 1;
       renderTableHeaders();
       updateTableByPage();
+
       if (tableLoading) tableLoading.style.display = "none";
       if (tableContainer) tableContainer.style.display = "block";
-    } catch (error) {
+    }
+    catch (error) {
       if (tableLoading) {
         tableLoading.textContent = `Error loading history: ${error.message}`;
         tableLoading.style.display = "";
@@ -56,7 +58,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // --- Table headers and data keys ---
   const headers = [
     "Marketid", "Company", "Itmdesc", "Cost", "Total Stock",
     "Original Recommended Qty", "Order Qty", "Total Cost",
@@ -68,7 +69,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "recommended_shipping", "approved_by", "approved_at",
   ];
 
-  // --- Render table headers ---
   function renderTableHeaders() {
     if (!tableHead) return;
     tableHead.innerHTML = "";
@@ -80,7 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Render table body ---
   function renderTableBody(data) {
     if (!tableBody) return;
     tableBody.innerHTML = "";
@@ -116,7 +115,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Pagination helpers ---
   function createPaginationContainer() {
     const container = document.createElement("div");
     container.className = "pagination-container";
@@ -149,7 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return btn;
     }
 
-    // Previous
     const prevBtn = createPageButton("Previous", currentPage === 1);
     prevBtn.addEventListener("click", () => {
       if (currentPage > 1) {
@@ -159,7 +156,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     container.appendChild(prevBtn);
 
-    // Page Numbers
     let startPage = Math.max(1, currentPage - 4);
     let endPage = Math.min(totalPages, startPage + 9);
     if (endPage - startPage < 9) startPage = Math.max(1, endPage - 9);
@@ -175,7 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
       container.appendChild(pageBtn);
     }
 
-    // Next
     const nextBtn = createPageButton("Next", currentPage === totalPages);
     nextBtn.addEventListener("click", () => {
       if (currentPage < totalPages) {
@@ -203,7 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
       : "No data to display";
   }
 
-  // --- Export to Excel ---
   function exportToExcel() {
     if (!currentFilteredData.length) {
       alert("No data to export.");
@@ -222,11 +216,9 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "Approval_History.xlsx");
   }
 
-  // --- Initialize filters and fetch data ---
   const filters = initFilters();
   fetchHistoryData(filters.startDate, filters.endDate);
 
-  // --- Event listeners ---
   applyFilterBtn.addEventListener("click", () => {
     const startDate = filterStartDateInput.value;
     const endDate = filterEndDateInput.value;
@@ -234,7 +226,6 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Please select both start and end dates.");
       return;
     }
-    // Save to session and fetch new data
     sessionStorage.setItem("startDateISO", startDate);
     sessionStorage.setItem("endDateISO", endDate);
     fetchHistoryData(startDate, endDate);
@@ -242,13 +233,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (exportBtn) {
     exportBtn.addEventListener("click", exportToExcel);
-  }
-
-  function initFilters() {
-    const start = sessionStorage.getItem("startDateISO") || "2025-01-01";
-    const end = sessionStorage.getItem("endDateISO") || new Date().toISOString().slice(0, 10);
-    filterStartDateInput.value = start;
-    filterEndDateInput.value = end;
-    return { startDate: start, endDate: end };
   }
 });
