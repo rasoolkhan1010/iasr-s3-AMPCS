@@ -1,4 +1,6 @@
 const userRole = sessionStorage.getItem('userRole') || 'admin';
+const API_BASE = window.CONFIG && window.CONFIG.API_BASE ? window.CONFIG.API_BASE : "https://iasr-s3-2.onrender.com";
+
 
 document.addEventListener("DOMContentLoaded", () => {
   // --- DOM Elements ---
@@ -259,6 +261,7 @@ async function fetchHistoryData(startDate, endDate) {
     return { startDate: start, endDate: end };
   }
 });
+
 
 
 
