@@ -236,7 +236,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
   `;
   const params = [startDate, inclusiveEndDate];
   let idx = 3;
-  if (marketid && marketid.trim() !== "") {
+  if (marketid && marketid.trim() !== "" && marketid !== "admin") {
     sql += ` AND marketid = $${idx++}`;
     params.push(marketid.trim());
   }
@@ -252,7 +252,6 @@ app.post("/api/get-history-for-range", async (req, res) => {
   }
 });
 
-// Root
 app.get("/", (req, res) => res.send("OK - server up"));
 
 app.listen(PORT, "0.0.0.0", () => {
