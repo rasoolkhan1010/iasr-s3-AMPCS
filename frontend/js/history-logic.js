@@ -25,14 +25,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return { startDate: start, endDate: end };
   }
 
-  // --- Fetch history data with filter and market ---
+  // --- Fetch history data with market filter ---
   async function fetchHistoryData(startDate, endDate) {
     if (tableLoading) {
       tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
       tableLoading.style.display = "";
     }
     try {
-      const userMarket = sessionStorage.getItem("userMarket") || "RGV";
+      const userMarket = sessionStorage.getItem("userMarket") || "";
       const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -221,11 +221,9 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "History");
     XLSX.writeFile(workbook, "Approval_History.xlsx");
   }
-
   // --- Initialize filters and fetch data ---
   const filters = initFilters();
   fetchHistoryData(filters.startDate, filters.endDate);
-
   // --- Event listeners ---
   applyFilterBtn.addEventListener("click", () => {
     const startDate = filterStartDateInput.value;
@@ -239,12 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem("endDateISO", endDate);
     fetchHistoryData(startDate, endDate);
   });
-
   if (exportBtn) {
     exportBtn.addEventListener("click", exportToExcel);
   }
-
 });
-
-
-
