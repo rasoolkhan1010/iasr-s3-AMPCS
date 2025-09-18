@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", () => {
   // --- DOM Elements ---
   const tableLoading = document.getElementById("table-loading");
@@ -25,18 +26,17 @@ document.addEventListener("DOMContentLoaded", () => {
     return { startDate: start, endDate: end };
   }
 
-  // --- Fetch history data with market filter ---
+  // --- Fetch history data with filter ---
   async function fetchHistoryData(startDate, endDate) {
     if (tableLoading) {
       tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
       tableLoading.style.display = "";
     }
     try {
-      const userMarket = sessionStorage.getItem("userMarket") || "";
       const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate, marketid: userMarket }),
+        body: JSON.stringify({ startDate, endDate }),
       });
       if (!response.ok) throw new Error("Failed to fetch history data");
       const json = await response.json();
@@ -221,9 +221,11 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "History");
     XLSX.writeFile(workbook, "Approval_History.xlsx");
   }
+
   // --- Initialize filters and fetch data ---
   const filters = initFilters();
   fetchHistoryData(filters.startDate, filters.endDate);
+
   // --- Event listeners ---
   applyFilterBtn.addEventListener("click", () => {
     const startDate = filterStartDateInput.value;
@@ -237,7 +239,16 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem("endDateISO", endDate);
     fetchHistoryData(startDate, endDate);
   });
+
   if (exportBtn) {
     exportBtn.addEventListener("click", exportToExcel);
+  }
+
+  function initFilters() {
+    const start = sessionStorage.getItem("startDateISO") || "2025-01-01";
+    const end = sessionStorage.getItem("endDateISO") || new Date().toISOString().slice(0, 10);
+    filterStartDateInput.value = start;
+    filterEndDateInput.value = end;
+    return { startDate: start, endDate: end };
   }
 });
