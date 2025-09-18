@@ -1,5 +1,3 @@
-const userRole = sessionStorage.getItem('userRole') || 'admin';
-const API_BASE = window.CONFIG && window.CONFIG.API_BASE ? window.CONFIG.API_BASE : "https://iasr-s3-2.onrender.com";
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -30,40 +28,34 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Fetch history data with filter ---
-async function fetchHistoryData(startDate, endDate) {
-  if (tableLoading) {
-    tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
-    tableLoading.style.display = "";
-  }
-  try {
-    const userRole = sessionStorage.getItem("userRole") || "admin";
-    const response = await fetch(`${API_BASE}/api/get-history-for-range`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        startDate,
-        endDate,
-        userRole
-      })
-    });
-    if (!response.ok) throw new Error("Failed to fetch history data");
-    const json = await response.json();
-    fullHistoryData = json.data || [];
-    currentFilteredData = fullHistoryData;
-    currentPage = 1;
-    renderTableHeaders();
-    updateTableByPage();
-    if (tableLoading) tableLoading.style.display = "none";
-    if (tableContainer) tableContainer.style.display = "block";
-  } catch (error) {
+  async function fetchHistoryData(startDate, endDate) {
     if (tableLoading) {
-      tableLoading.textContent = `Error loading history: ${error.message}`;
+      tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
       tableLoading.style.display = "";
     }
-    if (tableContainer) tableContainer.style.display = "none";
+    try {
+      const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate, endDate }),
+      });
+      if (!response.ok) throw new Error("Failed to fetch history data");
+      const json = await response.json();
+      fullHistoryData = json.data || [];
+      currentFilteredData = fullHistoryData;
+      currentPage = 1;
+      renderTableHeaders();
+      updateTableByPage();
+      if (tableLoading) tableLoading.style.display = "none";
+      if (tableContainer) tableContainer.style.display = "block";
+    } catch (error) {
+      if (tableLoading) {
+        tableLoading.textContent = `Error loading history: ${error.message}`;
+        tableLoading.style.display = "";
+      }
+      if (tableContainer) tableContainer.style.display = "none";
+    }
   }
-}
-
 
   // --- Table headers and data keys ---
   const headers = [
@@ -261,8 +253,3 @@ async function fetchHistoryData(startDate, endDate) {
     return { startDate: start, endDate: end };
   }
 });
-
-
-
-
-
