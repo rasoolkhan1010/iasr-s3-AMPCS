@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tableLoading.style.display = "";
     }
     try {
-      const userMarket = sessionStorage.getItem("userMarket") || "rgv";
+      const userMarket = sessionStorage.getItem("userMarket") || "RGV";
       const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -245,5 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 });
+
 
 
