@@ -90,6 +90,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
   try {
     const start = startDate;
+    // Append time to include whole day endDate until 23:59:59
     const end = `${endDate} 23:59:59`;
     const q = `SELECT * FROM public.inventory_data WHERE date BETWEEN $1 AND $2 ORDER BY date ASC`;
     const result = await pool.query(q, [start, end]);
@@ -214,9 +215,10 @@ app.post("/api/add-history", async (req, res) => {
   }
 });
 
-// History data fetch with market filtering
+// Get history data filtered by date range and optional filters with endDate inclusive to whole day
 app.post("/api/get-history-for-range", async (req, res) => {
-  const { startDate, endDate, marketid } = req.body;
+  const { startDate, endDate, marketId, Itmdesc } = req.body;
+  // Append time to endDate to include entire day
   const inclusiveEndDate = `${endDate} 23:59:59`;
   let sql = `
     SELECT
@@ -236,13 +238,15 @@ app.post("/api/get-history-for-range", async (req, res) => {
   `;
   const params = [startDate, inclusiveEndDate];
   let idx = 3;
-  if (marketid && marketid.trim() !== "" && marketid !== "admin") {
+  if (marketId) {
     sql += ` AND marketid = $${idx++}`;
-    params.push(marketid.trim());
+    params.push(marketId);
+  }
+  if (Itmdesc) {
+    sql += ` AND itmdesc = $${idx++}`;
+    params.push(Itmdesc);
   }
   sql += ` ORDER BY approved_at DESC`;
-  console.log("Executing SQL:", sql);
-  console.log("With params:", params);
   try {
     const result = await pool.query(sql, params);
     res.json({ data: result.rows });
@@ -252,8 +256,10 @@ app.post("/api/get-history-for-range", async (req, res) => {
   }
 });
 
+// Root
 app.get("/", (req, res) => res.send("OK - server up"));
 
+// Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
