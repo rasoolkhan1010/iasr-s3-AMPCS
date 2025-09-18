@@ -1,3 +1,4 @@
+const userRole = sessionStorage.getItem('userRole') || 'admin';
 
 document.addEventListener("DOMContentLoaded", () => {
   // --- DOM Elements ---
@@ -256,4 +257,5 @@ document.addEventListener("DOMContentLoaded", () => {
     return { startDate: start, endDate: end };
   }
 });
+
 
