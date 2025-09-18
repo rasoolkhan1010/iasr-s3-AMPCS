@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
@@ -90,6 +91,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
   try {
     const start = startDate;
+    // Append time to include whole day endDate until 23:59:59
     const end = `${endDate} 23:59:59`;
     const q = `SELECT * FROM public.inventory_data WHERE date BETWEEN $1 AND $2 ORDER BY date ASC`;
     const result = await pool.query(q, [start, end]);
@@ -214,10 +216,10 @@ app.post("/api/add-history", async (req, res) => {
   }
 });
 
-// MAIN FUNCTIONALITY: Get history data filtered by date range and role/market (NEW!)
+// Get history data filtered by date range and optional filters with endDate inclusive to whole day
 app.post("/api/get-history-for-range", async (req, res) => {
-  // Mod: use userRole from frontend, not marketId
-  const { startDate, endDate, userRole } = req.body;
+  const { startDate, endDate, marketId, Itmdesc } = req.body;
+  // Append time to endDate to include entire day
   const inclusiveEndDate = `${endDate} 23:59:59`;
   let sql = `
     SELECT
@@ -236,11 +238,16 @@ app.post("/api/get-history-for-range", async (req, res) => {
     WHERE approved_at BETWEEN $1 AND $2
   `;
   const params = [startDate, inclusiveEndDate];
-  if (userRole && userRole !== "admin") {
-    sql += " AND marketid = $3";
-    params.push(userRole);
+  let idx = 3;
+  if (marketId) {
+    sql += ` AND marketid = $${idx++}`;
+    params.push(marketId);
   }
-  sql += " ORDER BY approved_at DESC";
+  if (Itmdesc) {
+    sql += ` AND itmdesc = $${idx++}`;
+    params.push(Itmdesc);
+  }
+  sql += ` ORDER BY approved_at DESC`;
   try {
     const result = await pool.query(sql, params);
     res.json({ data: result.rows });
