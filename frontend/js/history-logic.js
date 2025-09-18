@@ -33,11 +33,15 @@ document.addEventListener("DOMContentLoaded", () => {
       tableLoading.style.display = "";
     }
     try {
-      const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate }),
-      });
+     const response = await fetch(`${API_BASE}/api/get-history-range`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      startDate,
+      endDate,
+      userRole  // Pass the userRole here
+    }
+      );
       if (!response.ok) throw new Error("Failed to fetch history data");
       const json = await response.json();
       fullHistoryData = json.data || [];
@@ -252,3 +256,4 @@ document.addEventListener("DOMContentLoaded", () => {
     return { startDate: start, endDate: end };
   }
 });
+
