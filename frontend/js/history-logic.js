@@ -1,5 +1,3 @@
-
-
 document.addEventListener("DOMContentLoaded", () => {
   // --- DOM Elements ---
   const tableLoading = document.getElementById("table-loading");
@@ -27,17 +25,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return { startDate: start, endDate: end };
   }
 
-  // --- Fetch history data with filter ---
+  // --- Fetch history data with filter and market ---
   async function fetchHistoryData(startDate, endDate) {
     if (tableLoading) {
       tableLoading.textContent = `Loading history from ${startDate} to ${endDate}...`;
       tableLoading.style.display = "";
     }
     try {
+      const userMarket = sessionStorage.getItem("userMarket") || "";
       const response = await fetch(`${window.CONFIG.API_BASE}/api/get-history-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate }),
+        body: JSON.stringify({ startDate, endDate, marketid: userMarket }),
       });
       if (!response.ok) throw new Error("Failed to fetch history data");
       const json = await response.json();
@@ -245,11 +244,4 @@ document.addEventListener("DOMContentLoaded", () => {
     exportBtn.addEventListener("click", exportToExcel);
   }
 
-  function initFilters() {
-    const start = sessionStorage.getItem("startDateISO") || "2025-01-01";
-    const end = sessionStorage.getItem("endDateISO") || new Date().toISOString().slice(0, 10);
-    filterStartDateInput.value = start;
-    filterEndDateInput.value = end;
-    return { startDate: start, endDate: end };
-  }
 });
