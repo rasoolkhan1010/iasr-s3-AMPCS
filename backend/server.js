@@ -217,37 +217,38 @@ app.post("/api/add-history", async (req, res) => {
 
 // Get history data filtered by date range and optional filters with endDate inclusive to whole day
 app.post("/api/get-history-for-range", async (req, res) => {
-  const { startDate, endDate, marketId, Itmdesc } = req.body;
-  // Append time to endDate to include entire day
-  const inclusiveEndDate = `${endDate} 23:59:59`;
-  let sql = `
-    SELECT
-      marketid,
-      company,
-      itmdesc,
-      cost,
-      "Total_Stock" AS total_stock,
-      "Original_Recommended_Qty" AS original_recommended_qty,
-      "Order_Qty" AS order_qty,
-      "Total_Cost" AS total_cost,
-      "Recommended_Shipping" AS recommended_shipping,
-      "Approved_By" AS approved_by,
-      approved_at
-    FROM history_data
-    WHERE approved_at BETWEEN $1 AND $2
-  `;
-  const params = [startDate, inclusiveEndDate];
-  let idx = 3;
-  if (marketId) {
-    sql += ` AND marketid = $${idx++}`;
-    params.push(marketId);
-  }
-  if (Itmdesc) {
-    sql += ` AND itmdesc = $${idx++}`;
-    params.push(Itmdesc);
-  }
-  sql += ` ORDER BY approved_at DESC`;
   try {
+    const { startDate, endDate, marketid } = req.body;
+    const inclusiveEndDate = `${endDate} 23:59:59`;
+
+    let sql = `
+      SELECT
+        marketid,
+        company,
+        itmdesc,
+        cost,
+        "Total_Stock" AS total_stock,
+        "Original_Recommended_Qty" AS original_recommended_qty,
+        "Order_Qty" AS order_qty,
+        "Total_Cost" AS total_cost,
+        "Recommended_Shipping" AS recommended_shipping,
+        "Approved_By" AS approved_by,
+        approved_at
+      FROM history_data
+      WHERE approved_at BETWEEN $1 AND $2
+    `;
+
+    const params = [startDate, inclusiveEndDate];
+    let idx = 3;
+
+    // Filter by marketid only if not admin
+    if (marketid && marketid.trim() !== "" && marketid !== "admin") {
+      sql += ` AND marketid = $${idx++}`;
+      params.push(marketid.trim());
+    }
+
+    sql += ` ORDER BY approved_at DESC`;
+
     const result = await pool.query(sql, params);
     res.json({ data: result.rows });
   } catch (err) {
@@ -255,6 +256,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch history.", error: err.message });
   }
 });
+
 
 // Root
 app.get("/", (req, res) => res.send("OK - server up"));
