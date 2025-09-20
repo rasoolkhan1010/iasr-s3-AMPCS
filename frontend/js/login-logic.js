@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Use relative API path so the backend can auto-detect by Origin
+  // Single source of truth for backend URL (set in index.html)
   const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
 
   const usernameInput = document.getElementById("username");
@@ -13,10 +13,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const marketSelect = document.getElementById("market-select");
   const errorMessage = document.getElementById("error-message");
   const loginButton = loginForm.querySelector('button[type="submit"]');
-  const startDateInput = document.getElementById("start-date");
-  const endDateInput = document.getElementById("end-date");
+  const startDateInput = document.getElementById("start-date"); // type="date"
+  const endDateInput = document.getElementById("end-date");     // type="date"
 
-  // Date helpers for ISO, US, and DMY formats
+  // Date helpers
   const isISO = s => /^\d{4}-\d{2}-\d{2}$/.test(s);
   const isUS = s => /^\d{2}\/\d{2}\/\d{4}$/.test(s);
   const isDMY = s => /^\d{2}-\d{2}-\d{4}$/.test(s);
@@ -26,12 +26,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${m}/${d}/${y}`;
   };
   const usToISO = us => {
-    const [m, d, y] = us.split("/");
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    const [m,d,y] = us.split("/");
+    return `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
   };
   const dmyToUS = dmy => {
-    const [d, m, y] = dmy.split("-");
-    return `${m.padStart(2, "0")}/${d.padStart(2, "0")}/${y}`;
+    const [d,m,y] = dmy.split("-");
+    return `${m.padStart(2,"0")}/${d.padStart(2,"0")}/${y}`;
   };
 
   function readAnyToISO(val) {
@@ -49,15 +49,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
-  // Set date inputs default to today
+  // Default today (ISO for input, US for UI/session)
   const now = new Date();
-  const isoToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-    now.getDate()
-  ).padStart(2, "0")}`;
+  const isoToday = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
   startDateInput.value = isoToday;
   endDateInput.value = isoToday;
 
-  ["blur", "change"].forEach(evt => {
+  // Always keep .value ISO for browser
+  ["blur","change"].forEach(evt => {
     startDateInput.addEventListener(evt, () => {
       const iso = readAnyToISO(startDateInput.value.trim());
       if (iso) startDateInput.value = iso;
@@ -68,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // User DB
   let userDatabase = {};
   let isDataReady = false;
 
@@ -76,8 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loginButton.textContent = "Loading Data...";
   }
 
-  // Fetch market list from backend using relative API url
-  fetch(`${API_BASE}/get-all-markets`)
+  // FIX: load markets from correct backend route (no localhost, no domain root)
+  fetch(`${API_BASE}/api/get-all-markets`)
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
@@ -85,6 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(result => {
       const markets = result.data || [];
 
+      // Mock/simple user DB for demo: admin + per-market user
       const db = { admin: { password: "admin", allowedRole: "admin" } };
       markets.forEach(market => {
         const uname = `${String(market).toLowerCase()}_user`;
@@ -92,7 +93,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       userDatabase = db;
 
-      // Populate markets dropdown options
+      // Market dropdown (placeholder+Admin first; append markets)
       const fragment = document.createDocumentFragment();
       markets.forEach(market => {
         const option = document.createElement("option");
@@ -109,8 +110,8 @@ document.addEventListener("DOMContentLoaded", () => {
         loginButton.textContent = "Login";
       }
     })
-    .catch(error => {
-      console.error("Error loading markets:", error);
+    .catch(err => {
+      console.error("Error loading markets:", err);
       if (loginButton) loginButton.textContent = "Error Loading Data";
       errorMessage.textContent = "Could not load login data.";
       errorMessage.classList.remove("hidden");
@@ -128,6 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
     const selectedRole = marketSelect.value;
+
     const rawStart = startDateInput.value.trim();
     const rawEnd = endDateInput.value.trim();
 
@@ -141,6 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
       errorMessage.classList.remove("hidden");
       return;
     }
+
     const sdt = new Date(startISO);
     const edt = new Date(endISO);
     if (!(sdt instanceof Date) || isNaN(sdt) || !(edt instanceof Date) || isNaN(edt)) {
@@ -160,6 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
       errorMessage.classList.remove("hidden");
       return;
     }
+
+    // Role lock
     if (user.allowedRole === "admin") {
       marketSelect.disabled = false;
       marketSelect.value = "admin";
@@ -185,12 +190,14 @@ document.addEventListener("DOMContentLoaded", () => {
       roleToStore = user.allowedRole;
     }
 
+    // Save session
     sessionStorage.setItem("userRole", roleToStore);
     sessionStorage.setItem("startDate", startUS);
     sessionStorage.setItem("endDate", endUS);
     sessionStorage.setItem("startDateISO", startISO);
     sessionStorage.setItem("endDateISO", endISO);
 
+    // Redirect to dashboard page that uses /api/get-data-for-range
     window.location.href = "dashboard.html";
   });
 });
