@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Use relative API path so the backend can auto-detect by Origin
-  const API_BASE = "/api";
+  const API_BASE = "";
 
   const usernameInput = document.getElementById("username");
   const passwordInput = document.getElementById("password");
