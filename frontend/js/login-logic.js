@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Use relative API path so the backend can auto-detect by Origin
-  const API_BASE = "";
+  const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
 
   const usernameInput = document.getElementById("username");
   const passwordInput = document.getElementById("password");
