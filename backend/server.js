@@ -6,24 +6,14 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Define your two frontend URLs
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://iasr-s3-3-front-end.onrender.com";
-const FRONTEND_URL2 = process.env.FRONTEND_URL2 || "https://your-second-frontend-url.com";
-
 const DATABASE_URL =
   process.env.DATABASE_URL ||
   "postgresql://admin:ZSYVyCmQynPYV8NJWBCLVea3YxkW630y@dpg-d3182cbuibrs73aajh5g-a/inventory_db_4al1";
 
-// CORS config to allow both frontend URLs
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || origin === FRONTEND_URL || origin === FRONTEND_URL2) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: FRONTEND_URL,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -34,26 +24,17 @@ app.use(express.json());
 const pool = new Pool(
   DATABASE_URL
     ? {
-      connectionString: DATABASE_URL,
-      ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
-    }
+        connectionString: DATABASE_URL,
+        ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
+      }
     : {
-      user: process.env.PGUSER || "postgres",
-      host: process.env.PGHOST || "localhost",
-      database: process.env.PGDATABASE || "postgres",
-      password: process.env.PGPASSWORD || "admin",
-      port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
-    }
+        user: process.env.PGUSER || "postgres",
+        host: process.env.PGHOST || "localhost",
+        database: process.env.PGDATABASE || "postgres",
+        password: process.env.PGPASSWORD || "admin",
+        port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
+      }
 );
-
-// Helper to determine which frontend is calling and select proper table suffix
-function getFrontendSuffix(req) {
-  const origin = req.headers.origin || "";
-  if (origin === FRONTEND_URL2) {
-    return "_main2"; // suffix for second frontend tables
-  }
-  return ""; // default (first frontend)
-}
 
 function formatDateMMDDYYYY(d) {
   if (!d) return "";
@@ -91,6 +72,7 @@ const CSV_HEADERS = [
   "Recommended Shipping",
 ];
 
+// Health check endpoint
 app.get("/health", async (req, res) => {
   try {
     const now = await pool.query("SELECT NOW()");
@@ -100,17 +82,17 @@ app.get("/health", async (req, res) => {
   }
 });
 
+// Data range endpoint for inventory_data
 app.post("/api/get-data-for-range", async (req, res) => {
   const { startDate, endDate } = req.body;
   if (!startDate || !endDate) {
     return res.status(400).json({ message: "Start and end dates are required." });
   }
   try {
-    const suffix = getFrontendSuffix(req);
     const start = startDate;
+    // Append time to include whole day endDate until 23:59:59
     const end = `${endDate} 23:59:59`;
-    const table = `inventory_data${suffix}`;
-    const q = `SELECT * FROM public.${table} WHERE date BETWEEN $1 AND $2 ORDER BY date ASC`;
+    const q = `SELECT * FROM public.inventory_data WHERE date BETWEEN $1 AND $2 ORDER BY date ASC`;
     const result = await pool.query(q, [start, end]);
     if (!result.rows || result.rows.length === 0) {
       return res.json({ headers: CSV_HEADERS, data: [] });
@@ -148,6 +130,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
 });
 
+// Existing approve endpoint for writing to CSV
 app.post("/api/approve", (req, res) => {
   const { headers, data } = req.body;
   const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
@@ -166,6 +149,7 @@ app.post("/api/approve", (req, res) => {
   });
 });
 
+// Serve CSV file
 app.get("/approved_suggestion.csv", (req, res) => {
   const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
   res.sendFile(csvFilePath, (err) => {
@@ -175,11 +159,10 @@ app.get("/approved_suggestion.csv", (req, res) => {
   });
 });
 
+// Markets endpoint
 app.get("/api/get-all-markets", async (req, res) => {
   try {
-    const suffix = getFrontendSuffix(req);
-    const table = `inventory_data${suffix}`;
-    const q = `SELECT DISTINCT marketid FROM public.${table} WHERE marketid IS NOT NULL ORDER BY marketid ASC`;
+    const q = `SELECT DISTINCT marketid FROM public.inventory_data WHERE marketid IS NOT NULL ORDER BY marketid ASC`;
     const result = await pool.query(q);
     const markets = result.rows.map((r) => r.marketid);
     res.json({ data: markets });
@@ -189,6 +172,7 @@ app.get("/api/get-all-markets", async (req, res) => {
   }
 });
 
+// Add approved data to history_data table with correct quoting
 app.post("/api/add-history", async (req, res) => {
   const {
     Marketid,
@@ -204,10 +188,8 @@ app.post("/api/add-history", async (req, res) => {
   } = req.body;
   const Approved_At = new Date().toISOString();
   try {
-    const suffix = getFrontendSuffix(req);
-    const table = `history_data${suffix}`;
     const sql = `
-      INSERT INTO ${table} (
+      INSERT INTO history_data (
         marketid, company, itmdesc, cost, "Total_Stock",
         "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
         "Recommended_Shipping", "Approved_By", approved_at
@@ -233,12 +215,12 @@ app.post("/api/add-history", async (req, res) => {
   }
 });
 
+// Get history data filtered by date range and optional filters with endDate inclusive to whole day
 app.post("/api/get-history-for-range", async (req, res) => {
   try {
-    const suffix = getFrontendSuffix(req);
-    const table = `history_data${suffix}`;
     const { startDate, endDate, marketid } = req.body;
     const inclusiveEndDate = `${endDate} 23:59:59`;
+
     let sql = `
       SELECT
         marketid,
@@ -252,16 +234,21 @@ app.post("/api/get-history-for-range", async (req, res) => {
         "Recommended_Shipping" AS recommended_shipping,
         "Approved_By" AS approved_by,
         approved_at
-      FROM ${table}
+      FROM history_data
       WHERE approved_at BETWEEN $1 AND $2
     `;
+
     const params = [startDate, inclusiveEndDate];
     let idx = 3;
+
+    // Filter by marketid only if not admin
     if (marketid && marketid.trim() !== "" && marketid !== "admin") {
       sql += ` AND marketid = $${idx++}`;
       params.push(marketid.trim());
     }
+
     sql += ` ORDER BY approved_at DESC`;
+
     const result = await pool.query(sql, params);
     res.json({ data: result.rows });
   } catch (err) {
@@ -270,10 +257,11 @@ app.post("/api/get-history-for-range", async (req, res) => {
   }
 });
 
+
+// Root
 app.get("/", (req, res) => res.send("OK - server up"));
 
+// Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
-
-module.exports = { app, pool };
