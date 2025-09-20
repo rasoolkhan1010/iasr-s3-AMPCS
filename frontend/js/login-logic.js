@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // Use relative API path to enable backend to detect frontend by Origin header automatically
+  // Use relative API path so the backend can auto-detect by Origin
   const API_BASE = "/api";
 
   const usernameInput = document.getElementById("username");
@@ -13,10 +13,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const marketSelect = document.getElementById("market-select");
   const errorMessage = document.getElementById("error-message");
   const loginButton = loginForm.querySelector('button[type="submit"]');
-  const startDateInput = document.getElementById("start-date"); // type="date"
-  const endDateInput = document.getElementById("end-date"); // type="date"
+  const startDateInput = document.getElementById("start-date");
+  const endDateInput = document.getElementById("end-date");
 
-  // Date helpers to support ISO, US, DMY formats
+  // Date helpers for ISO, US, and DMY formats
   const isISO = s => /^\d{4}-\d{2}-\d{2}$/.test(s);
   const isUS = s => /^\d{2}\/\d{2}\/\d{4}$/.test(s);
   const isDMY = s => /^\d{2}-\d{2}-\d{4}$/.test(s);
@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return "";
   }
 
-  // Initialize date inputs with today date
+  // Set date inputs default to today
   const now = new Date();
   const isoToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
     now.getDate()
@@ -68,17 +68,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // User DB storage and ready flag
   let userDatabase = {};
   let isDataReady = false;
 
-  // Disable login button until markets loaded
   if (loginButton) {
     loginButton.disabled = true;
     loginButton.textContent = "Loading Data...";
   }
 
-  // Fetch markets from backend using relative API url
+  // Fetch market list from backend using relative API url
   fetch(`${API_BASE}/get-all-markets`)
     .then(res => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -87,7 +85,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(result => {
       const markets = result.data || [];
 
-      // Build a demo user DB: admin user plus per-market users
       const db = { admin: { password: "admin", allowedRole: "admin" } };
       markets.forEach(market => {
         const uname = `${String(market).toLowerCase()}_user`;
@@ -95,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       userDatabase = db;
 
-      // Populate market dropdown options
+      // Populate markets dropdown options
       const fragment = document.createDocumentFragment();
       markets.forEach(market => {
         const option = document.createElement("option");
@@ -128,24 +125,22 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Gather input fields
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
     const selectedRole = marketSelect.value;
     const rawStart = startDateInput.value.trim();
     const rawEnd = endDateInput.value.trim();
 
-    // Validate dates
     const startISO = readAnyToISO(rawStart);
     const endISO = readAnyToISO(rawEnd);
     const startUS = readAnyToUS(rawStart);
     const endUS = readAnyToUS(rawEnd);
+
     if (!startISO || !endISO || !startUS || !endUS) {
       errorMessage.textContent = "Please enter valid dates in MM/DD/YYYY.";
       errorMessage.classList.remove("hidden");
       return;
     }
-
     const sdt = new Date(startISO);
     const edt = new Date(endISO);
     if (!(sdt instanceof Date) || isNaN(sdt) || !(edt instanceof Date) || isNaN(edt)) {
@@ -159,15 +154,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Check username/password
     const user = userDatabase[username];
     if (!user || user.password !== password) {
       errorMessage.textContent = "Invalid username or password.";
       errorMessage.classList.remove("hidden");
       return;
     }
-
-    // Role access logic
     if (user.allowedRole === "admin") {
       marketSelect.disabled = false;
       marketSelect.value = "admin";
@@ -193,14 +185,12 @@ document.addEventListener("DOMContentLoaded", () => {
       roleToStore = user.allowedRole;
     }
 
-    // Save session values
     sessionStorage.setItem("userRole", roleToStore);
     sessionStorage.setItem("startDate", startUS);
     sessionStorage.setItem("endDate", endUS);
     sessionStorage.setItem("startDateISO", startISO);
     sessionStorage.setItem("endDateISO", endISO);
 
-    // Redirect to dashboard page
     window.location.href = "dashboard.html";
   });
 });
