@@ -80,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
   const columnMapping = {
     "Market-id": "Marketid",
-    company: "company",
+    comp_any: "company",
     Itmdesc: "Itmdesc",
     Cost: "cost",
     "Total_Stock": "total_stock",
@@ -574,4 +574,5 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
 
