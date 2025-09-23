@@ -79,15 +79,15 @@ document.addEventListener("DOMContentLoaded", () => {
     "recommended shipping", "Action"
   ];
   const columnMapping = {
-    "Market-id": "Marketid",
+    Market-id: "Marketid",
     company: "company",
     Itmdesc: "Itmdesc",
     Cost: "cost",
     Total_Stock: "total_stock",
-    "30_days": "30_days",
-    "W3": "W3",
-    "Recommended Quntitty": "Recommended Quntitty",
-    "recommended shipping": "Recommended Shipping"
+    30_days: "30_days",
+    W3: "W3",
+    Recommended Quntitty: "Recommended Quntitty",
+    recommended shipping: "Recommended Shipping"
   };
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
   const keyOf = r => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
@@ -574,6 +574,7 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
 
 
 
