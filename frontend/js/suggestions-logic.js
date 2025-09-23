@@ -1,8 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // 0) Backend base URL
+  // 0) Centralized backend base URL (set window.CONFIG.API_BASE in index.html)
   const API_BASE = (window.CONFIG && window.CONFIG.API_BASE) || "https://iasr-s3-2.onrender.com";
 
-  // 1) Security/session check
+  // --- 1) Security / session ---
   const userRole = sessionStorage.getItem("userRole");
   let sd = sessionStorage.getItem("startDate");
   let ed = sessionStorage.getItem("endDate");
@@ -11,18 +11,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // 2) Date helpers
-  const isISODate = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
-  const isUSDate = s => typeof s === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(s);
-  const isoToUS = iso => {
+  // US/ISO helpers
+  const isISODate = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const isUSDate = (s) => typeof s === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(s);
+  const isoToUS = (iso) => {
     const [y, m, d] = iso.split("-");
     return `${m}/${d}/${y}`;
   };
-  const usToISO = us => {
+  const usToISO = (us) => {
     const [m, d, y] = us.split("/");
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   };
 
+  // Normalize session to have both US and ISO
   let startDateUS, endDateUS, startISO, endISO;
   if (isISODate(sd) && isISODate(ed)) {
     startISO = sd;
@@ -44,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   sessionStorage.setItem("startDateISO", startISO);
   sessionStorage.setItem("endDateISO", endISO);
 
-  // 3) DOM references
+  // --- 2) DOM refs ---
   const tableLoading = document.getElementById("table-loading");
   const tableContainer = document.getElementById("table-container");
   const tableHead = document.querySelector("#data-table thead tr");
@@ -64,18 +65,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalItemCount = document.getElementById("modal-item-count");
   const dataCountElement = document.getElementById("data-count");
 
-  // 4) State variables
+  // --- 3) State ---
   let fullData = [];
   let currentFilteredData = [];
   let dataToSend = [];
   const rowsPerPage = 1000;
   let currentPage = 1;
 
-  // 5) Headers and column mapping
+  // Headers and mappings
   const desiredHeaders = [
     "Select", "Market-id", "company", "Itmdesc", "Cost",
-    "Total _Stock", "30_days", "W3",
-    "Recommended Quntitty", "required qty", "Total Cost",
+    "Total_stock", "month sale", "week sale",
+    "recommended qty", "required qty", "Total Cost",
     "recommended shipping", "Action"
   ];
   const columnMapping = {
@@ -83,16 +84,16 @@ document.addEventListener("DOMContentLoaded", () => {
     company: "company",
     Itmdesc: "Itmdesc",
     Cost: "cost",
-    "total_stock": "total_stock",
-    "30_days": "30_days",
-    "W3": "W3",
-    "Recommended Quntitty": "Recommended Quntitty",
+    Total_stock: "Total _Stock",
+    "month sale": "30_days",
+    "week sale": "W3",
+    "recommended qty": "Recommended Quntitty",
     "recommended shipping": "Recommended Shipping"
   };
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
-  const keyOf = r => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
+  const keyOf = (r) => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
 
-  // 6) Setup logout and export
+  // --- 4) Logout and export ---
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
       sessionStorage.clear();
@@ -101,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (exportBtn) exportBtn.addEventListener("click", exportToExcel);
 
-  // 7) Pagination setup
+  // --- 5) Pagination Controls ---
   const paginationContainer = document.createElement("div");
   paginationContainer.classList.add("pagination-container");
   paginationContainer.style.marginTop = "10px";
@@ -118,11 +119,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const btn = document.createElement("button");
       btn.textContent = text;
       btn.disabled = disabled;
-      btn.className = isCurrent
-        ? "mx-1 px-3 py-1 rounded border text-sm font-bold bg-blue-600 text-white border-blue-700 shadow"
-        : "mx-1 px-3 py-1 rounded border text-sm font-semibold bg-white text-gray-700 hover:bg-blue-600 hover:text-white border-gray-300";
-      if (disabled) {
-        btn.className = "mx-1 px-3 py-1 rounded border text-sm font-semibold bg-gray-200 text-gray-400 cursor-not-allowed border-gray-300";
+      btn.className =
+        "mx-1 px-3 py-1 rounded border text-sm font-semibold " +
+        (disabled
+          ? "bg-gray-200 text-gray-400 cursor-not-allowed border-gray-300"
+          : "bg-white text-gray-700 hover:bg-blue-600 hover:text-white border-gray-300");
+      if (isCurrent) {
+        btn.className =
+          "mx-1 px-3 py-1 rounded border text-sm font-bold bg-blue-600 text-white border-blue-700 shadow";
+        btn.disabled = true;
       }
       return btn;
     };
@@ -136,19 +141,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     paginationContainer.appendChild(prevBtn);
 
-    let startPage = Math.max(1, currentPage - 4);
-    let endPage = Math.min(totalPages, startPage + 9);
-    if (endPage - startPage < 9) startPage = Math.max(1, endPage - 9);
-
+    const maxPageButtons = 10;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+    if (endPage - startPage < maxPageButtons - 1) {
+      startPage = Math.max(1, endPage - maxPageButtons + 1);
+    }
     for (let i = startPage; i <= endPage; i++) {
-      const btn = createPageButton(i, false, i === currentPage);
+      const pageBtn = createPageButton(i, false, i === currentPage);
       if (i !== currentPage) {
-        btn.addEventListener("click", () => {
+        pageBtn.addEventListener("click", () => {
           currentPage = i;
           updateTableByPage();
         });
       }
-      paginationContainer.appendChild(btn);
+      paginationContainer.appendChild(pageBtn);
     }
 
     const nextBtn = createPageButton("Next", currentPage === totalPages);
@@ -169,12 +176,14 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDataCount();
   }
 
-  // 8) Fetch data function
+  // --- 6) Load data ---
+  fetchDataForRange();
   async function fetchDataForRange() {
     if (tableLoading) {
       tableLoading.textContent = `Loading data from ${startDateUS} to ${endDateUS}...`;
     }
     try {
+      // FIX: correct backend route and HTTPS (no localhost)
       const response = await fetch(`${API_BASE}/api/get-data-for-range`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,15 +198,19 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(msg);
       }
       const result = await response.json();
-      fullData = (result.data || []).map(r => {
+
+      fullData = (result.data || []).map((r) => {
         const raw = r["Recommended Quntitty"];
         const num = parseFloat(raw);
         return {
           ...r,
-          ["Recommended Quntitty"]: raw === undefined || raw === null || raw === "" || Number.isNaN(num) ? "0" : String(num),
+          ["Recommended Quntitty"]:
+            raw === undefined || raw === null || raw === "" || Number.isNaN(num) ? "0" : String(num),
         };
       });
+
       fullData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
       if (userRole !== "admin") {
         fullData = fullData.filter(row => row.Marketid === userRole);
       }
@@ -206,9 +219,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (tableLoading) tableLoading.textContent = `Error: ${error.message}`;
     }
   }
-  fetchDataForRange();
 
-  // 9) Initialize and add event listeners
+  // --- 7) View init ---
   function initializeView() {
     if (!fullData || fullData.length === 0) {
       if (tableLoading) tableLoading.textContent = "No data available for the selected date range.";
@@ -217,14 +229,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tableLoading) tableLoading.style.display = "none";
     if (tableContainer) tableContainer.style.display = "block";
 
-    if (userRole !== "admin" && marketIdFilter) {
-      marketIdFilter.disabled = true;
-      marketIdFilter.innerHTML = `<option value="${userRole}" selected>${userRole}</option>`;
-    } else if (marketIdFilter) {
-      const markets = [...new Set(fullData.map(r => r.Marketid).filter(Boolean))].sort();
-      populateSelect(marketIdFilter, markets, "All Markets");
+    if (userRole !== "admin") {
+      if (marketIdFilter) {
+        marketIdFilter.disabled = true;
+        marketIdFilter.innerHTML = `<option value="${userRole}" selected>${userRole}</option>`;
+      }
+    } else {
+      if (marketIdFilter) {
+        const markets = [...new Set(fullData.map(r => r.Marketid).filter(Boolean))].sort();
+        populateSelect(marketIdFilter, markets, "All Markets");
+      }
     }
-
     if (dateFilter) {
       const dates = [...new Set(fullData.map(r => r.Date).filter(Boolean))].sort();
       populateSelect(dateFilter, dates, "All Dates");
@@ -242,25 +257,22 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTableHeaders();
     applyFilters();
 
-    // Filter event listeners
     if (marketIdFilter) marketIdFilter.addEventListener("change", () => { updateDependentFilters(); applyFilters(); });
     if (custnoFilter) custnoFilter.addEventListener("change", () => { updateDependentFilters(); applyFilters(); });
     if (itmdescFilter) itmdescFilter.addEventListener("change", applyFilters);
     if (dateFilter) dateFilter.addEventListener("change", applyFilters);
     if (quantityFilter) quantityFilter.addEventListener("change", applyFilters);
 
-    // Modal event listeners
     if (modalCancelBtn) modalCancelBtn.addEventListener("click", () => (approvalModal.style.display = "none"));
     if (modalOkayBtn) modalOkayBtn.addEventListener("click", sendApproval);
     if (sendSelectedBtn) sendSelectedBtn.addEventListener("click", handleBulkSend);
   }
 
-  // 10) Filter helpers and logic
+  // --- 8) Filters and dropdown populate ---
   function updateDependentFilters() {
     if (!marketIdFilter) return;
     const marketQuery = marketIdFilter.value;
     let visibleData = fullData.filter(row => marketQuery === "ALL" || row.Marketid === marketQuery);
-
     if (custnoFilter) {
       const customers = [...new Set(visibleData.map(row => row.custno).filter(Boolean))].sort();
       populateSelect(custnoFilter, customers, "All Customers");
@@ -274,6 +286,7 @@ document.addEventListener("DOMContentLoaded", () => {
       populateSelect(itmdescFilter, items, "All Items");
     }
   }
+
   function populateStaticSelect(selectElement, options) {
     if (!selectElement) return;
     selectElement.innerHTML = "";
@@ -289,6 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
       selectElement.appendChild(option);
     }
   }
+
   function populateSelect(selectElement, values, defaultOptionText) {
     if (!selectElement) return;
     const currentVal = selectElement.value;
@@ -305,6 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     selectElement.value = [...selectElement.options].some(opt => opt.value === currentVal) ? currentVal : "ALL";
   }
+
   function applyFilters() {
     if (!marketIdFilter) return;
     const marketQuery = marketIdFilter.value;
@@ -318,8 +333,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const custnoMatch = custnoQuery === "ALL" || row.custno === custnoQuery;
       const itmdescMatch = itmdescQuery === "ALL" || row.Itmdesc === itmdescQuery;
       const dateMatch = dateQuery === "ALL" || row.Date === dateQuery;
+
       const qRaw = row["Recommended Quntitty"];
       const quantity = Number.isNaN(parseFloat(qRaw)) ? 0 : parseFloat(qRaw);
+
       let quantityMatch = true;
       if (quantityQuery === "less_than_zero") quantityMatch = quantity < 0;
       else if (quantityQuery === "equal_to_zero") quantityMatch = quantity === 0;
@@ -328,11 +345,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return marketMatch && custnoMatch && itmdescMatch && dateMatch && quantityMatch;
     });
 
-    currentPage = 1;
+    currentPage = 1; // reset on filter change
     updateTableByPage();
   }
 
-  // 11) Table rendering functions
+  // --- 9) Table Rendering ---
   function renderTableHeaders() {
     if (!tableHead) return;
     tableHead.innerHTML = "";
@@ -355,6 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tableHead.appendChild(th);
     });
   }
+
   function renderTableBody(data) {
     if (!tableBody) return;
     tableBody.innerHTML = "";
@@ -382,14 +400,12 @@ document.addEventListener("DOMContentLoaded", () => {
           checkbox.className = "form-checkbox h-4 w-4 text-indigo-600 row-checkbox";
           checkbox.dataset.key = rowKey;
           td.appendChild(checkbox);
-
         } else if (headerKey === "Action") {
           const sendBtn = document.createElement("button");
           sendBtn.textContent = "Approve";
           sendBtn.className = "bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-xs";
           sendBtn.onclick = () => openSendModal([row]);
           td.appendChild(sendBtn);
-
         } else if (headerKey === "recommended shipping") {
           const select = document.createElement("select");
           select.className = "recommended-shipping border rounded px-2 py-1 text-xs";
@@ -406,7 +422,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (rec) rec["Recommended Shipping"] = select.value;
           });
           td.appendChild(select);
-
         } else if (headerKey === "required qty") {
           const init = row._neededQty !== undefined ? row._neededQty : 0;
           const input = document.createElement("input");
@@ -428,14 +443,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           });
           td.appendChild(input);
-
         } else if (headerKey === "Total Cost") {
           const need = row._neededQty !== undefined ? row._neededQty : 0;
           const cst = parseFloat(row.cost) || 0;
           td.classList.add("total-cost");
           td.dataset.key = rowKey;
           td.textContent = (need * cst).toFixed(2);
-
         } else {
           const csvHeader = columnMapping[headerKey];
           let value = row[csvHeader];
@@ -450,9 +463,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       tableBody.appendChild(tr);
     });
-  } 
+  }
 
-  // 12) Modal approval flow as you have (unchanged)
+  // --- 10) Approve flow (modal + bulk + POST) ---
   function openSendModal(items) {
     if (!items || items.length === 0) {
       alert("Please select at least one item to send.");
@@ -468,8 +481,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectedRowsData = [];
     if (!tableBody) return;
     const checkedBoxes = tableBody.querySelectorAll("input.row-checkbox:checked");
-    checkedBoxes.forEach(checkbox => {
-      const rec = fullData.find(r => keyOf(r) === checkbox.dataset.key);
+    checkedBoxes.forEach((checkbox) => {
+      const rec = fullData.find((r) => keyOf(r) === checkbox.dataset.key);
       if (rec) selectedRowsData.push(rec);
     });
     openSendModal(selectedRowsData);
@@ -485,68 +498,92 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Please select an approver.");
       return;
     }
+
     for (const item of dataToSend) {
       const rqRaw = item["Recommended Quntitty"];
       const recommendedQty = Number.isNaN(parseFloat(rqRaw)) ? 0 : parseFloat(rqRaw);
       const neededQty = item._neededQty !== undefined ? parseFloat(item._neededQty) : 0;
       const itemCost = parseFloat(item.cost) || 0;
+
       const sel = document.querySelector(`select.recommended-shipping[data-key="${keyOf(item)}"]`);
       const shipping = sel ? sel.value : item["Recommended Shipping"] || "No order needed";
+
       const totalCost = (neededQty * itemCost).toFixed(2);
+
+      const headers = [
+        "Marketid",
+        "company",
+        "Itmdesc",
+        "cost",
+        "Total_Stock",
+        "Original_Recommended_Qty",
+        "Order_Qty",
+        "Total_Cost",
+        "Recommended_Shipping",
+        "Approved_By",
+      ];
+
+      const data = [
+        item.Marketid,
+        item.company,
+        item.Itmdesc,
+        itemCost,
+        item["Total _Stock"] || 0,
+        recommendedQty,
+        neededQty,
+        totalCost,
+        shipping,
+        approver,
+      ];
+
       try {
-        await fetch(`${API_BASE}/api/add-history`, {
+        // FIX: correct backend route and HTTPS (no localhost)
+        await fetch(`${API_BASE}/api/approve`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            Marketid: item.Marketid,
-            company: item.company,
-            Itmdesc: item.Itmdesc,
-            cost: item.cost,
-            "total _stock": item["total_stock"] || 0,
-            Original_Recommended_Qty: recommendedQty,
-            Order_Qty: neededQty,
-            Total_Cost: totalCost,
-            Recommended_Shipping: shipping,
-            Approved_By: approver,
-          }),
+          body: JSON.stringify({ headers, data }),
         });
       } catch (error) {
         alert(`An error occurred while sending item: ${item.Itmdesc}. Process stopped.`);
         return;
       }
     }
+
     alert(`${dataToSend.length} item(s) sent for approval successfully!`);
     if (approvalModal) approvalModal.style.display = "none";
     dataToSend = [];
     if (tableBody) {
-      tableBody.querySelectorAll("input.row-checkbox:checked").forEach(cb => (cb.checked = false));
+      tableBody.querySelectorAll("input.row-checkbox:checked").forEach((cb) => (cb.checked = false));
     }
     applyFilters();
   }
 
-  // 13) Update data count
+  // --- 11) Row/column counts ---
   function updateDataCount() {
     if (!dataCountElement) return;
     const rowCount = currentFilteredData.length;
     const colCount = desiredHeaders.length;
-    dataCountElement.textContent = rowCount > 0
-      ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(rowCount / rowsPerPage)}, total ${rowCount} rows and ${colCount} columns`
-      : "No data to display";
+    dataCountElement.textContent =
+      rowCount > 0
+        ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(
+            rowCount / rowsPerPage
+          )}, total ${rowCount} rows and ${colCount} columns`
+        : "No data to display";
   }
 
-  // 14) Export to Excel (fixed and complete)
+  // --- 12) Export (all filtered rows) ---
   function exportToExcel() {
     if (!currentFilteredData || currentFilteredData.length === 0) {
       alert("No data to export.");
       return;
     }
-    // Exclude 'Select' and 'Action' columns
-    const headersForExport = desiredHeaders.filter(h => h !== "Select" && h !== "Action");
-    const dataForSheet = currentFilteredData.map(row => {
+    const headersForExport = desiredHeaders.filter((h) => h !== "Select" && h !== "Action");
+    const dataForSheet = currentFilteredData.map((row) => {
       const newRow = {};
-      headersForExport.forEach(headerKey => {
+      headersForExport.forEach((headerKey) => {
         if (headerKey === "required qty") {
-          newRow[headerKey] = row._neededQty !== undefined ? row._neededQty : 0;
+          const need = row._neededQty !== undefined ? row._neededQty : 0;
+          newRow[headerKey] = need;
           return;
         }
         if (headerKey === "Total Cost") {
@@ -556,22 +593,24 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
         if (headerKey === "recommended qty") {
-          const raw = row["Recommended Quntitty"];
-          const val = Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
-          newRow[headerKey] = val;
+          const qRaw = row["Recommended Quntitty"];
+          const q = Number.isNaN(parseFloat(qRaw)) ? 0 : parseFloat(qRaw);
+          newRow[headerKey] = q;
           return;
         }
-        const dbKey = columnMapping[headerKey];
-        let value = row[dbKey];
+        const csvHeader = columnMapping[headerKey];
+        let value = row[csvHeader];
         if (value === undefined || value === null || value === "") value = 0;
         newRow[headerKey] = value;
       });
       return newRow;
     });
+
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
     XLSX.utils.book_append_sheet(workbook, worksheet, "SuggestionsData");
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
 
