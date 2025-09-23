@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
     company: "company",
     Itmdesc: "Itmdesc",
     Cost: "cost",
-    "Total _Stock": "Total _Stock",
+    "total_stock": "total_stock",
     "30_days": "30_days",
     "W3": "W3",
     "Recommended Quntitty": "Recommended Quntitty",
@@ -502,7 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
             company: item.company,
             Itmdesc: item.Itmdesc,
             cost: item.cost,
-            "Total _Stock": item["Total_Stock"] || 0,
+            "total _stock": item["total_stock"] || 0,
             Original_Recommended_Qty: recommendedQty,
             Order_Qty: neededQty,
             Total_Cost: totalCost,
@@ -574,3 +574,4 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
+
