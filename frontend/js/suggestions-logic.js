@@ -74,20 +74,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // 5) Headers and column mapping
   const desiredHeaders = [
     "Select", "Market-id", "company", "Itmdesc", "Cost",
-    "Total_Stock", "30_days", "W3",
+    "Total _Stock", "30_days", "W3",
     "Recommended Quntitty", "required qty", "Total Cost",
     "recommended shipping", "Action"
   ];
   const columnMapping = {
-    Market-id: "Marketid",
+    "Market-id": "Marketid",
     company: "company",
     Itmdesc: "Itmdesc",
     Cost: "cost",
-    Total_Stock: "total_stock",
-    30_days: "30_days",
-    W3: "W3",
-    Recommended Quntitty: "Recommended Quntitty",
-    recommended shipping: "Recommended Shipping"
+    "Total _Stock": "Total _Stock",
+    "30_days": "30_days",
+    "W3": "W3",
+    "Recommended Quntitty": "Recommended Quntitty",
+    "recommended shipping": "Recommended Shipping"
   };
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
   const keyOf = r => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
@@ -502,7 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
             company: item.company,
             Itmdesc: item.Itmdesc,
             cost: item.cost,
-            "Total_Stock": item["total_stock"] ,
+            "Total _Stock": item["Total_Stock"] || 0,
             Original_Recommended_Qty: recommendedQty,
             Order_Qty: neededQty,
             Total_Cost: totalCost,
@@ -574,9 +574,3 @@ document.addEventListener("DOMContentLoaded", () => {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 });
-
-
-
-
-
-
