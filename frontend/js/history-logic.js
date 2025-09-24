@@ -64,7 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "Recommended Shipping", "Approved By", "Approved At",
   ];
   const dataKeys = [
-    "marketid", "company", "itmdesc", "cost", "Total_Stock",
+    "marketid", "company", "itmdesc", "cost", "total_stock",
     "original_recommended_qty", "order_qty", "total_cost",
     "recommended_shipping", "approved_by", "approved_at",
   ];
@@ -235,6 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
     exportBtn.addEventListener("click", exportToExcel);
   }
 });
+
 
 
 
