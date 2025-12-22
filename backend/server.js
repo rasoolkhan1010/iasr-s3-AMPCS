@@ -21,10 +21,20 @@ app.use(
 
 app.use(express.json());
 
-const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
-});
+const pool = new Pool(
+  DATABASE_URL
+    ? {
+        connectionString: DATABASE_URL,
+        ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
+      }
+    : {
+        user: process.env.PGUSER || "postgres",
+        host: process.env.PGHOST || "localhost",
+        database: process.env.PGDATABASE || "postgres",
+        password: process.env.PGPASSWORD || "admin",
+        port: process.env.PGPORT ? parseInt(process.env.PGPORT, 10) : 5432,
+      }
+);
 
 function formatDateMMDDYYYY(d) {
   if (!d) return "";
@@ -36,11 +46,30 @@ function formatDateMMDDYYYY(d) {
 }
 
 const CSV_HEADERS = [
-  "Date", "Marketid", "custno", "company", "Item", "Status", "Itmdesc",
-  "In_Stock", "In_Transit", "Total_Stock", "cost", "Allocations",
-  "W1", "W2", "W3", "30_days", "OVERNIGHT", "To_Order_Cost_Overnight",
-  "2_DAY_SHIP", "To_Order_Cost_2DAY", "GROUND", "To_Order_Cost_GROUND",
-  "Recommended Quntitty", "Recommended Shipping",
+  "Date",
+  "Marketid",
+  "custno",
+  "company",
+  "Item",
+  "Status",
+  "Itmdesc",
+  "In_Stock",
+  "In_Transit",
+  "Total_Stock",
+  "cost",
+  "Allocations",
+  "W1",
+  "W2",
+  "W3",
+  "30_days",
+  "OVERNIGHT",
+  "To_Order_Cost_Overnight",
+  "2_DAY_SHIP",
+  "To_Order_Cost_2DAY",
+  "GROUND",
+  "To_Order_Cost_GROUND",
+  "Recommended Quntitty",
+  "Recommended Shipping",
 ];
 
 // Health check endpoint
@@ -61,6 +90,7 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
   try {
     const start = startDate;
+    // Append time to include whole day endDate until 23:59:59
     const end = `${endDate} 23:59:59`;
     const q = `SELECT * FROM public.inventory_data WHERE date BETWEEN $1 AND $2 ORDER BY date ASC`;
     const result = await pool.query(q, [start, end]);
@@ -100,38 +130,95 @@ app.post("/api/get-data-for-range", async (req, res) => {
   }
 });
 
-// UPDATED: Add history with fixed column names from screenshot
+// Existing approve endpoint for writing to CSV
+app.post("/api/approve", (req, res) => {
+  const { headers, data } = req.body;
+  const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
+  const timestamp = new Date().toISOString();
+  const headersWithTimestamp = ["Timestamp", ...headers];
+  const dataWithTimestamp = [timestamp, ...data];
+  const fileExists = fs.existsSync(csvFilePath);
+  const csvRow = dataWithTimestamp.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",");
+  const contentToAppend = (fileExists ? "\n" : headersWithTimestamp.join(",") + "\n") + csvRow;
+  fs.appendFile(csvFilePath, contentToAppend, "utf8", (err) => {
+    if (err) {
+      console.error("Failed to save approval:", err);
+      return res.status(500).json({ message: "Failed to save approval." });
+    }
+    res.status(200).json({ message: "Approval saved successfully!" });
+  });
+});
+
+// Serve CSV file
+app.get("/approved_suggestion.csv", (req, res) => {
+  const csvFilePath = path.join(__dirname, "approved_suggestion.csv");
+  res.sendFile(csvFilePath, (err) => {
+    if (err) {
+      res.status(404).send("File not found");
+    }
+  });
+});
+
+// Markets endpoint
+app.get("/api/get-all-markets", async (req, res) => {
+  try {
+    const q = `SELECT DISTINCT marketid FROM public.inventory_data WHERE marketid IS NOT NULL ORDER BY marketid ASC`;
+    const result = await pool.query(q);
+    const markets = result.rows.map((r) => r.marketid);
+    res.json({ data: markets });
+  } catch (err) {
+    console.error("DB error (get-all-markets):", err);
+    res.status(500).json({ message: "Failed to fetch markets." });
+  }
+});
+
+// UPDATED: Add approved data to history_data table with comments support
 app.post("/api/add-history", async (req, res) => {
   const {
-    Marketid, company, Itmdesc, cost, Total_Stock,
-    Original_Recommended_Qty, Order_Qty, Total_Cost,
-    Recommended_Shipping, Approved_By, Comments
+    Marketid,
+    company,
+    Itmdesc,
+    cost,
+    Total_Stock,
+    Original_Recommended_Qty,
+    Order_Qty,
+    Total_Cost,
+    Recommended_Shipping,
+    Approved_By,
+    Comments, // NEW: Comments field
   } = req.body;
   const Approved_At = new Date().toISOString();
   
   try {
-    // These column names now match your database screenshot exactly
     const sql = `
       INSERT INTO history_data (
         marketid, company, itmdesc, cost, "Total_Stock",
-        "Original_Recomr", "Order_Qty", "Total_Cost",
-        "Recommended_", "Approved_By", approved_at, comments
+        "Original_Recommended_Qty", "Order_Qty", "Total_Cost",
+        "Recommended_Shipping", "Approved_By", approved_at, comments
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
     `;
     await pool.query(sql, [
-      Marketid, company, Itmdesc, cost, Total_Stock,
-      Original_Recommended_Qty, Order_Qty, Total_Cost,
-      Recommended_Shipping, Approved_By, Approved_At,
-      Comments || ""
+      Marketid,
+      company,
+      Itmdesc,
+      cost,
+      Total_Stock,
+      Original_Recommended_Qty,
+      Order_Qty,
+      Total_Cost,
+      Recommended_Shipping,
+      Approved_By,
+      Approved_At,
+      Comments || "", // NEW: Insert comments or empty string if null
     ]);
     res.json({ success: true });
   } catch (err) {
     console.error("Add history error:", err);
-    res.status(500).json({ message: "Failed to save history.", error: err.message });
+    res.status(500).json({ message: "Failed to save history record.", error: err.message });
   }
 });
 
-// UPDATED: Get history with fixed column names and ALIASES
+// UPDATED: Get history data with comments support
 app.post("/api/get-history-for-range", async (req, res) => {
   try {
     const { startDate, endDate, marketid } = req.body;
@@ -144,10 +231,10 @@ app.post("/api/get-history-for-range", async (req, res) => {
         itmdesc,
         cost,
         "Total_Stock" AS total_stock,
-        "Original_Recomr" AS original_recommended_qty,
+        "Original_Recommended_Qty" AS original_recommended_qty,
         "Order_Qty" AS order_qty,
         "Total_Cost" AS total_cost,
-        "Recommended_" AS recommended_shipping,
+        "Recommended_Shipping" AS recommended_shipping,
         "Approved_By" AS approved_by,
         approved_at,
         comments
@@ -158,6 +245,7 @@ app.post("/api/get-history-for-range", async (req, res) => {
     const params = [startDate, inclusiveEndDate];
     let idx = 3;
 
+    // Filter by marketid only if not admin
     if (marketid && marketid.trim() !== "" && marketid !== "admin") {
       sql += ` AND marketid = $${idx++}`;
       params.push(marketid.trim());
@@ -173,26 +261,38 @@ app.post("/api/get-history-for-range", async (req, res) => {
   }
 });
 
+// NEW: Database setup endpoint to add comments column if it doesn't exist
 app.post("/api/setup-comments-column", async (req, res) => {
   try {
+    // Check if comments column exists
     const checkColumnQuery = `
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name='history_data' AND column_name='comments';
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='history_data' 
+      AND column_name='comments';
     `;
+    
     const columnExists = await pool.query(checkColumnQuery);
+    
     if (columnExists.rows.length === 0) {
+      // Add comments column if it doesn't exist
       await pool.query(`ALTER TABLE history_data ADD COLUMN comments TEXT DEFAULT '';`);
-      res.json({ success: true, message: "Comments column added" });
+      console.log("Comments column added to history_data table");
+      res.json({ success: true, message: "Comments column added successfully" });
     } else {
-      res.json({ success: true, message: "Column already exists" });
+      res.json({ success: true, message: "Comments column already exists" });
     }
   } catch (err) {
-    res.status(500).json({ message: "Setup failed", error: err.message });
+    console.error("Setup comments column error:", err);
+    res.status(500).json({ message: "Failed to setup comments column.", error: err.message });
   }
 });
 
+// Root
 app.get("/", (req, res) => res.send("OK - server up"));
 
+// Start server
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
+// server is up
