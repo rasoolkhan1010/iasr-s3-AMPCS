@@ -76,14 +76,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const desiredHeaders = [
     "Select", "Market-id", "company", "Itmdesc", "Cost",
     "Total_Stock", "30_days", "W3",
-    "Recommended Quntitty", "required qty", "Total Cost",
+    "Recommended Quntitty", "required qty", "Total_Cost",
     "recommended shipping", "Comments", "Action"
   ];
   const columnMapping = {
     "Market-id": "Marketid",
     company: "company",
     Itmdesc: "Itmdesc",
-    Cost: "cost",
+    Total_Cost: "cost",
     "Total_Stock": "Total_Stock",
     "30_days": "30_days",
     "W3": "W3",
@@ -733,3 +733,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
