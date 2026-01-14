@@ -23,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   };
 
-  // Normalize mixed date formats to keep consistent Date filters and server payloads
   let startDateUS, endDateUS, startISO, endISO;
   if (isISODate(sd) && isISODate(ed)) {
     startISO = sd;
@@ -72,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const rowsPerPage = 1000;
   let currentPage = 1;
 
-  // 5) Headers and column mapping (fixed header checks for Recommended Quntitty)
+  // 5) Headers and column mapping (UPDATED WITH COMMENTS)
   const desiredHeaders = [
     "Select", "Market-id", "company", "Itmdesc", "Cost",
     "Total_Stock", "30_days", "W3",
@@ -91,9 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "recommended shipping": "Recommended Shipping"
   };
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
-
-  // Unique key must include Date/custno to avoid collisions on identical items across days/customers
-  const keyOf = r => `${r.Marketid}||${r.company}||${r.Itmdesc}||${r.Date || ""}||${r.custno || ""}`;
+  const keyOf = r => `${r.Marketid}||${r.company}||${r.Itmdesc}`;
 
   // 6) Setup logout and export
   if (logoutBtn) {
@@ -128,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (thead) {
       thead.style.position = "sticky";
       thead.style.top = "0";
-      thead.style.zIndex = "5"; // lower than modal
+      thead.style.zIndex = "5"; // REDUCED: Lower z-index to prevent modal overlap
       thead.style.backgroundColor = "#f9fafb";
       thead.style.borderBottom = "2px solid #e5e7eb";
     }
@@ -137,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 8) Setup Modal with proper z-index
   function setupModalZIndex() {
     if (approvalModal) {
+      // Ensure modal has highest z-index
       approvalModal.style.zIndex = "9999";
       approvalModal.style.position = "fixed";
       approvalModal.style.top = "0";
@@ -145,6 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
       approvalModal.style.height = "100%";
       approvalModal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
       
+      // Find the modal content div and ensure it's properly centered
       const modalContent = approvalModal.querySelector('.modal-content, .bg-white, [class*="modal"]');
       if (modalContent) {
         modalContent.style.position = "relative";
@@ -250,24 +249,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const num = parseFloat(raw);
         return {
           ...r,
-          ["Recommended Quntitty"]: (raw === undefined || raw === null || raw === "" || Number.isNaN(num)) ? "0" : String(num),
-          _comment: ""
+          ["Recommended Quntitty"]: raw === undefined || raw === null || raw === "" || Number.isNaN(num) ? "0" : String(num),
+          _comment: "" // Initialize comment field
         };
       });
-
-      // Safer date sorting with normalization
-      const toComparableDate = s => {
-        if (!s) return new Date(0);
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s);
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-          const [m, d, y] = s.split("/");
-          return new Date(`${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`);
-        }
-        const t = Date.parse(s);
-        return Number.isNaN(t) ? new Date(0) : new Date(t);
-      };
-      fullData.sort((a, b) => toComparableDate(b.Date) - toComparableDate(a.Date));
-
+      fullData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
       if (userRole !== "admin") {
         fullData = fullData.filter(row => row.Marketid === userRole);
       }
@@ -288,7 +274,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tableContainer) tableContainer.style.display = "block";
 
     setupFixedHeaderTable();
-    setupModalZIndex();
+    setupModalZIndex(); // SETUP MODAL Z-INDEX
 
     if (userRole !== "admin" && marketIdFilter) {
       marketIdFilter.disabled = true;
@@ -322,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (dateFilter) dateFilter.addEventListener("change", applyFilters);
     if (quantityFilter) quantityFilter.addEventListener("change", applyFilters);
 
-    // Modal event listeners
+    // Modal event listeners with body scroll prevention
     if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
     if (modalOkayBtn) modalOkayBtn.addEventListener("click", sendApproval);
     if (sendSelectedBtn) sendSelectedBtn.addEventListener("click", handleBulkSend);
@@ -332,12 +318,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function closeModal() {
     if (approvalModal) {
       approvalModal.style.display = "none";
+      // Re-enable body scroll
       document.body.style.overflow = "auto";
     }
   }
+
   function openModal() {
     if (approvalModal) {
       approvalModal.style.display = "flex";
+      // Prevent body scroll when modal is open
       document.body.style.overflow = "hidden";
     }
   }
@@ -419,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateTableByPage();
   }
 
-  // 14) Table rendering functions
+  // 14) Table rendering functions (UPDATED WITH COMMENTS)
   function renderTableHeaders() {
     if (!tableHead) return;
     tableHead.innerHTML = "";
@@ -542,10 +531,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!rec) return;
             const val = parseFloat(input.value);
             rec._neededQty = isNaN(val) ? 0 : val;
-
-            // safer lookup by dataset instead of attribute selector
-            const tc = Array.from(document.querySelectorAll("td.total-cost"))
-              .find(el => el.dataset.key === rowKey);
+            const tc = document.querySelector(`td.total-cost[data-key="${rowKey}"]`);
             if (tc) {
               const cst = parseFloat(rec.cost) || 0;
               const qty = rec._neededQty !== undefined ? rec._neededQty : 0;
@@ -564,13 +550,10 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           const csvHeader = columnMapping[headerKey];
           let value = row[csvHeader];
-
-          // Normalize numeric display for Recommended Quntitty specifically
-          if (headerKey === "Recommended Quntitty") {
+          if (headerKey === "recommended qty") {
             const n = parseFloat(value);
-            value = (value === undefined || value === null || value === "" || Number.isNaN(n)) ? 0 : n;
+            value = value === undefined || value === null || value === "" || Number.isNaN(n) ? 0 : n;
           }
-
           if (value === undefined || value === null || value === "") value = 0;
           td.textContent = value;
           td.title = value;
@@ -581,7 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 15) Modal approval flow
+  // 15) Modal approval flow (UPDATED WITH PROPER MODAL HANDLING)
   function openSendModal(items) {
     if (!items || items.length === 0) {
       alert("Please select at least one item to send.");
@@ -590,7 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
     dataToSend = items;
     if (modalItemCount) modalItemCount.textContent = items.length;
     if (modalApproverSelect) modalApproverSelect.value = "";
-    openModal();
+    openModal(); // Use the proper modal open function
   }
 
   function handleBulkSend() {
@@ -620,13 +603,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const recommendedQty = Number.isNaN(parseFloat(rqRaw)) ? 0 : parseFloat(rqRaw);
       const neededQty = item._neededQty !== undefined ? parseFloat(item._neededQty) : 0;
       const itemCost = parseFloat(item.cost) || 0;
-
-      // Safer element resolution without CSS attribute selector pitfalls
-      const rowKey = keyOf(item);
-      const sel = Array.from(document.querySelectorAll("select.recommended-shipping"))
-        .find(el => el.dataset.key === rowKey);
+      const sel = document.querySelector(`select.recommended-shipping[data-key="${keyOf(item)}"]`);
       const shipping = sel ? sel.value : item["Recommended Shipping"] || "No order needed";
       const totalCost = (neededQty * itemCost).toFixed(2);
+      
+      // Get the comment for this item
       const comments = item._comment || "";
       
       try {
@@ -644,7 +625,7 @@ document.addEventListener("DOMContentLoaded", () => {
             Total_Cost: totalCost,
             Recommended_Shipping: shipping,
             Approved_By: approver,
-            Comments: comments
+            Comments: comments // Send comments to backend
           }),
         });
       } catch (error) {
@@ -654,7 +635,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     alert(`${dataToSend.length} item(s) sent for approval successfully!`);
-    closeModal();
+    closeModal(); // Use proper modal close function
     dataToSend = [];
     if (tableBody) {
       tableBody.querySelectorAll("input.row-checkbox:checked").forEach(cb => (cb.checked = false));
@@ -662,19 +643,17 @@ document.addEventListener("DOMContentLoaded", () => {
     applyFilters();
   }
 
-  // 16) Update data count (accurate per page)
+  // 16) Update data count
   function updateDataCount() {
     if (!dataCountElement) return;
     const rowCount = currentFilteredData.length;
-    const totalPages = Math.ceil(rowCount / rowsPerPage) || 1;
-    const startIdx = (currentPage - 1) * rowsPerPage;
-    const visibleRows = Math.max(0, Math.min(rowsPerPage, rowCount - startIdx));
+    const colCount = desiredHeaders.length;
     dataCountElement.textContent = rowCount > 0
-      ? `Displaying ${visibleRows} rows on page ${currentPage} of ${totalPages}, total ${rowCount} rows and ${desiredHeaders.length} columns`
+      ? `Displaying ${Math.min(rowCount, rowsPerPage)} rows on page ${currentPage} of ${Math.ceil(rowCount / rowsPerPage)}, total ${rowCount} rows and ${colCount} columns`
       : "No data to display";
   }
 
-  // 17) Export to Excel
+  // 17) Export to Excel (UPDATED WITH COMMENTS)
   function exportToExcel() {
     if (!currentFilteredData || currentFilteredData.length === 0) {
       alert("No data to export.");
@@ -694,7 +673,7 @@ document.addEventListener("DOMContentLoaded", () => {
           newRow[headerKey] = (need * cst).toFixed(2);
           return;
         }
-        if (headerKey === "Recommended Quntitty") {
+        if (headerKey === "recommended qty") {
           const raw = row["Recommended Quntitty"];
           const val = Number.isNaN(parseFloat(raw)) ? 0 : parseFloat(raw);
           newRow[headerKey] = val;
