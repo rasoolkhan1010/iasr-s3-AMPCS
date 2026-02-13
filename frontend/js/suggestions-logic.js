@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   };
 
-  // Normalize mixed date formats to keep consistent Date filters and server payloads
+  // Normalize mixed date formats
   let startDateUS, endDateUS, startISO, endISO;
   if (isISODate(sd) && isISODate(ed)) {
     startISO = sd;
@@ -72,30 +72,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const rowsPerPage = 1000;
   let currentPage = 1;
 
-  // 5) Headers and column mapping (fixed header checks for Recommended Quntitty)
   // 5) Headers and column mapping
-const desiredHeaders = [
-  "Select", "Market-id", "company", "Itmdesc", "Cost", // "Cost" is here
-  "Total_Stock", "30_days", "W3",
-  "Recommended Quntitty", "required qty", "Total_Cost",
-  "recommended shipping", "Comments", "Action"
-];
+  const desiredHeaders = [
+    "Select", "Market-id", "company", "Itmdesc", "Cost",
+    "Total_Stock", "30_days", "W3",
+    "Recommended Quntitty", "required qty", "Total_Cost",
+    "recommended shipping", "Comments", "Action"
+  ];
 
-const columnMapping = {
-  "Market-id": "Marketid",
-  "company": "company",
-  "Itmdesc": "Itmdesc",
-  "Cost": "cost",                // <--- ADD THIS LINE
-  "Total_Cost": "cost",          // Note: you are using 'cost' for both 
-  "Total_Stock": "Total_Stock",
-  "30_days": "30_days",
-  "W3": "W3",
-  "Recommended Quntitty": "Recommended Quntitty",
-  "recommended shipping": "Recommended Shipping"
-};
+  const columnMapping = {
+    "Market-id": "Marketid",
+    "company": "company",
+    "Itmdesc": "Itmdesc",
+    "Cost": "cost",                // ADDED: Maps "Cost" header to "cost" data
+    "Total_Cost": "cost",          // Used for fallback if needed, but handled specifically in render
+    "Total_Stock": "Total_Stock",
+    "30_days": "30_days",
+    "W3": "W3",
+    "Recommended Quntitty": "Recommended Quntitty",
+    "recommended shipping": "Recommended Shipping"
+  };
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
 
-  // Unique key must include Date/custno to avoid collisions on identical items across days/customers
+  // Unique key
   const keyOf = r => `${r.Marketid}||${r.company}||${r.Itmdesc}||${r.Date || ""}||${r.custno || ""}`;
 
   // 6) Setup logout and export
@@ -131,7 +130,7 @@ const columnMapping = {
     if (thead) {
       thead.style.position = "sticky";
       thead.style.top = "0";
-      thead.style.zIndex = "5"; // lower than modal
+      thead.style.zIndex = "5";
       thead.style.backgroundColor = "#f9fafb";
       thead.style.borderBottom = "2px solid #e5e7eb";
     }
@@ -258,7 +257,6 @@ const columnMapping = {
         };
       });
 
-      // Safer date sorting with normalization
       const toComparableDate = s => {
         if (!s) return new Date(0);
         if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s);
@@ -281,7 +279,7 @@ const columnMapping = {
   }
   fetchDataForRange();
 
-  // 11) Initialize and add event listeners
+  // 11) Initialize view
   function initializeView() {
     if (!fullData || fullData.length === 0) {
       if (tableLoading) tableLoading.textContent = "No data available for the selected date range.";
@@ -318,20 +316,18 @@ const columnMapping = {
     renderTableHeaders();
     applyFilters();
 
-    // Filter event listeners
     if (marketIdFilter) marketIdFilter.addEventListener("change", () => { updateDependentFilters(); applyFilters(); });
     if (custnoFilter) custnoFilter.addEventListener("change", () => { updateDependentFilters(); applyFilters(); });
     if (itmdescFilter) itmdescFilter.addEventListener("change", applyFilters);
     if (dateFilter) dateFilter.addEventListener("change", applyFilters);
     if (quantityFilter) quantityFilter.addEventListener("change", applyFilters);
 
-    // Modal event listeners
     if (modalCancelBtn) modalCancelBtn.addEventListener("click", closeModal);
     if (modalOkayBtn) modalOkayBtn.addEventListener("click", sendApproval);
     if (sendSelectedBtn) sendSelectedBtn.addEventListener("click", handleBulkSend);
   }
 
-  // 12) Modal functions with scroll prevention
+  // 12) Modal functions
   function closeModal() {
     if (approvalModal) {
       approvalModal.style.display = "none";
@@ -345,7 +341,7 @@ const columnMapping = {
     }
   }
 
-  // 13) Filter helpers and logic
+  // 13) Filter helpers
   function updateDependentFilters() {
     if (!marketIdFilter) return;
     const marketQuery = marketIdFilter.value;
@@ -422,7 +418,7 @@ const columnMapping = {
     updateTableByPage();
   }
 
-  // 14) Table rendering functions
+  // 14) Table rendering
   function renderTableHeaders() {
     if (!tableHead) return;
     tableHead.innerHTML = "";
@@ -473,6 +469,7 @@ const columnMapping = {
       const tr = document.createElement("tr");
       tr.className = "hover:bg-gray-50";
       const rowKey = keyOf(row);
+      
       desiredHeaders.forEach(headerKey => {
         const td = document.createElement("td");
         td.className = "px-6 py-4 whitespace-nowrap text-sm text-gray-800";
@@ -540,35 +537,39 @@ const columnMapping = {
           input.style.maxWidth = "100px";
           input.value = init;
           input.dataset.key = rowKey;
+          
           input.addEventListener("input", () => {
             const rec = fullData.find(r => keyOf(r) === rowKey);
             if (!rec) return;
             const val = parseFloat(input.value);
             rec._neededQty = isNaN(val) ? 0 : val;
 
-            // safer lookup by dataset instead of attribute selector
-            const tc = Array.from(document.querySelectorAll("td.total-cost"))
+            // DYNAMIC UPDATE OF TOTAL COST
+            // Find the specific cell using the class and data-key
+            const tcCell = Array.from(document.querySelectorAll(".total-cost-cell"))
               .find(el => el.dataset.key === rowKey);
-            if (tc) {
-              const cst = parseFloat(rec.cost) || 0;
-              const qty = rec._neededQty !== undefined ? rec._neededQty : 0;
-              tc.textContent = (qty * cst).toFixed(2);
+            
+            if (tcCell) {
+               const cst = parseFloat(rec.cost) || 0;
+               const qty = rec._neededQty;
+               tcCell.textContent = (qty * cst).toFixed(2);
             }
           });
           td.appendChild(input);
 
-        } else if (headerKey === "Total Cost") {
+        } else if (headerKey === "Total_Cost") { 
+          // Match desiredHeader exactly ("Total_Cost")
           const need = row._neededQty !== undefined ? row._neededQty : 0;
           const cst = parseFloat(row.cost) || 0;
-          td.classList.add("total-cost");
-          td.dataset.key = rowKey;
+          
+          td.classList.add("total-cost-cell"); // Mark class for selector
+          td.dataset.key = rowKey;             // Mark key for selector
           td.textContent = (need * cst).toFixed(2);
 
         } else {
           const csvHeader = columnMapping[headerKey];
           let value = row[csvHeader];
 
-          // Normalize numeric display for Recommended Quntitty specifically
           if (headerKey === "Recommended Quntitty") {
             const n = parseFloat(value);
             value = (value === undefined || value === null || value === "" || Number.isNaN(n)) ? 0 : n;
@@ -584,7 +585,7 @@ const columnMapping = {
     });
   }
 
-  // 15) Modal approval flow
+  // 15) Send Approval logic
   function openSendModal(items) {
     if (!items || items.length === 0) {
       alert("Please select at least one item to send.");
@@ -624,7 +625,6 @@ const columnMapping = {
       const neededQty = item._neededQty !== undefined ? parseFloat(item._neededQty) : 0;
       const itemCost = parseFloat(item.cost) || 0;
 
-      // Safer element resolution without CSS attribute selector pitfalls
       const rowKey = keyOf(item);
       const sel = Array.from(document.querySelectorAll("select.recommended-shipping"))
         .find(el => el.dataset.key === rowKey);
@@ -665,7 +665,7 @@ const columnMapping = {
     applyFilters();
   }
 
-  // 16) Update data count (accurate per page)
+  // 16) Update data count
   function updateDataCount() {
     if (!dataCountElement) return;
     const rowCount = currentFilteredData.length;
@@ -691,7 +691,7 @@ const columnMapping = {
           newRow[headerKey] = row._neededQty !== undefined ? row._neededQty : 0;
           return;
         }
-        if (headerKey === "Total Cost") {
+        if (headerKey === "Total_Cost") {
           const need = row._neededQty !== undefined ? row._neededQty : 0;
           const cst = parseFloat(row.cost) || 0;
           newRow[headerKey] = (need * cst).toFixed(2);
@@ -720,7 +720,7 @@ const columnMapping = {
     XLSX.writeFile(workbook, "suggestions_export.xlsx");
   }
 
-  // 18) Handle clicks outside modal to close it
+  // 18) Close modal on outside click
   if (approvalModal) {
     approvalModal.addEventListener("click", (e) => {
       if (e.target === approvalModal) {
@@ -729,12 +729,10 @@ const columnMapping = {
     });
   }
 
-  // 19) Handle ESC key to close modal
+  // 19) Close modal on Escape
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && approvalModal && approvalModal.style.display === "flex") {
       closeModal();
     }
   });
 });
-
-
