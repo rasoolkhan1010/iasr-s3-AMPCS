@@ -73,23 +73,26 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentPage = 1;
 
   // 5) Headers and column mapping (fixed header checks for Recommended Quntitty)
-  const desiredHeaders = [
-    "Select", "Market-id", "company", "Itmdesc", "Cost",
-    "Total_Stock", "30_days", "W3",
-    "Recommended Quntitty", "required qty", "Total_Cost",
-    "recommended shipping", "Comments", "Action"
-  ];
-  const columnMapping = {
-    "Market-id": "Marketid",
-    company: "company",
-    Itmdesc: "Itmdesc",
-    Total_Cost: "cost",
-    "Total_Stock": "Total_Stock",
-    "30_days": "30_days",
-    "W3": "W3",
-    "Recommended Quntitty": "Recommended Quntitty",
-    "recommended shipping": "Recommended Shipping"
-  };
+  // 5) Headers and column mapping
+const desiredHeaders = [
+  "Select", "Market-id", "company", "Itmdesc", "Cost", // "Cost" is here
+  "Total_Stock", "30_days", "W3",
+  "Recommended Quntitty", "required qty", "Total_Cost",
+  "recommended shipping", "Comments", "Action"
+];
+
+const columnMapping = {
+  "Market-id": "Marketid",
+  "company": "company",
+  "Itmdesc": "Itmdesc",
+  "Cost": "cost",                // <--- ADD THIS LINE
+  "Total_Cost": "cost",          // Note: you are using 'cost' for both 
+  "Total_Stock": "Total_Stock",
+  "30_days": "30_days",
+  "W3": "W3",
+  "Recommended Quntitty": "Recommended Quntitty",
+  "recommended shipping": "Recommended Shipping"
+};
   const SHIPPING_OPTIONS = ["No order needed", "Overnight", "2-day shipping", "Ground"];
 
   // Unique key must include Date/custno to avoid collisions on identical items across days/customers
@@ -733,4 +736,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
 
